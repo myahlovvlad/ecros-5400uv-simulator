@@ -1,250 +1,130 @@
-# Архитектура ЭКРОС-5400УФ Симулятор
+# Архитектура проекта
 
-## Clean Architecture
+## Общая схема
 
-Проект рефакторен с использованием принципов Clean Architecture для улучшения поддерживаемости, тестируемости и разделения ответственности.
+Проект разделён на четыре слоя:
 
-## Структура проекта
+- `domain` — измерительная модель, константы, проверки и чистые функции
+- `application` — сценарии работы прибора и обработчики экранов
+- `infrastructure` — адаптеры рендеринга и окружения
+- `presentation` — React UI, контексты и пользовательские инструменты
 
-```
+Такое разделение позволяет отдельно развивать модель прибора, интерфейс и интеграционные части без лишней связности.
+
+## Структура директорий
+
+```text
 src/
-├── domain/                     # Доменный слой (бизнес-логика)
-│   ├── constants/              # Константы и конфигурация
-│   │   └── index.js
-│   ├── entities/               # Типы и сущности
-│   │   └── index.js (JSDoc типы)
-│   └── usecases/               # Бизнес-правила и функции
-│       ├── index.js            # Основные use cases
-│       └── utils.js            # Утилиты (clamp, sleep, pad, center)
-│
-├── application/                # Прикладной слой
-│   ├── services/               # Сервисы приложения
-│   │   ├── DeviceService.js    # Логика устройства
-│   │   ├── CliService.js       # Обработка CLI команд
-│   │   └── ScreenHandlers.js   # Обработчики экранов
-│   └── ports/                  # Интерфейсы (будущее расширение)
-│
-├── infrastructure/             # Инфраструктурный слой
-│   ├── adapters/               # Адаптеры
-│   │   └── LcdRenderer.js      # Рендеринг LCD
-│   └── cli/                    # CLI адаптеры
-│
-└── presentation/               # Слой представления (UI)
-    ├── components/             # React компоненты
-    │   ├── Ecros5400UvSimulator.jsx  # Главный компонент
-    │   ├── LcdCanvas.jsx       # LCD дисплей
-    │   ├── ButtonKey.jsx       # Кнопка
-    │   ├── DevicePanel.jsx     # Панель управления
-    │   ├── DeviceStatus.jsx    # Состояние устройства
-    │   ├── MeasurementTable.jsx # Таблица измерений
-    │   ├── CliEmulator.jsx     # CLI консоль
-    │   ├── NavigationInfo.jsx  # Навигация
-    │   └── AppHeader.jsx       # Заголовок
-    ├── hooks/                  # Кастомные хуки
-    │   └── useDeviceController.js  # Управление устройством
-    └── contexts/               # React контексты (будущее расширение)
+  domain/
+    constants/
+    entities/
+    usecases/
+  application/
+    ports/
+    services/
+  infrastructure/
+    adapters/
+  presentation/
+    components/
+    contexts/
+    hooks/
 ```
 
-## Слои архитектуры
+## Domain Layer
 
-### Domain Layer (доменный)
+Слой `domain` не должен зависеть от React и браузерного окружения.
 
-**Зависимости:** Нет внешних зависимостей
+### Что находится в слое
 
-**Ответственность:**
-- Бизнес-правила предметной области
-- Константы устройства
-- Типы данных (JSDoc)
-- Функции измерений и расчётов
+- параметры прибора и меню
+- модель измерений и расчётов
+- генерация плана градуировки
+- валидация имени файла и числовых параметров
+- формирование стартового состояния прибора
 
-**Ключевые файлы:**
-- `domain/constants/index.js` - все константы (LCD, меню, диапазоны)
-- `domain/usecases/index.js` - `measureSample()`, `referenceEnergyAt()`, `absorbanceForSample()`
-- `domain/usecases/utils.js` - утилиты `clamp()`, `sleep()`, `pad()`, `center()`
+### Ключевые файлы
 
-### Application Layer (прикладной)
+- `src/domain/constants/index.js`
+- `src/domain/usecases/index.js`
+- `src/domain/usecases/utils.js`
 
-**Зависимости:** domain layer
+## Application Layer
 
-**Ответственность:**
-- Координация бизнес-логики
-- Обработка действий пользователя
-- Сервисы приложения
+Слой `application` координирует бизнес-логику и реакции на действия пользователя.
 
-**Ключевые файлы:**
-- `application/services/DeviceService.js` - операции устройства (ZERO, измерения, калибровка)
-- `application/services/CliService.js` - обработка CLI команд с валидацией
-- `application/services/ScreenHandlers.js` - обработчики для каждого экрана
+### Задачи слоя
 
-### Infrastructure Layer (инфраструктурный)
+- запуск измерений и калибровок
+- работа с файлами и USB-preview
+- маршрутизация действий по экранам
+- CLI-команды
 
-**Зависимости:** domain layer, application layer
+### Ключевые файлы
 
-**Ответственность:**
-- Адаптеры для внешних систем
-- Рендеринг LCD
-- CLI эмулятор
+- `src/application/services/DeviceService.js`
+- `src/application/services/ScreenHandlers.js`
+- `src/application/services/CliService.js`
 
-**Ключевые файлы:**
-- `infrastructure/adapters/LcdRenderer.js` - рендеринг строк LCD
+## Infrastructure Layer
 
-### Presentation Layer (представления)
+Слой `infrastructure` содержит адаптеры, которые переводят данные домена в конкретные форматы.
 
-**Зависимости:** Все слои выше
+### Что здесь важно
 
-**Ответственность:**
-- React компоненты
-- Управление состоянием (hooks)
-- UI логика
+- генерация строк LCD по текущему состоянию прибора
+- in-memory и local-storage адаптеры
+- логирование
 
-**Ключевые файлы:**
-- `presentation/hooks/useDeviceController.js` - центральный хук управления
-- `presentation/components/Ecros5400UvSimulator.jsx` - главный компонент
-- `presentation/components/*.jsx` - UI компоненты
+### Ключевые файлы
 
-## Исправленные проблемы
+- `src/infrastructure/adapters/LcdRenderer.js`
+- `src/infrastructure/adapters/MemoryStorage.js`
+- `src/infrastructure/adapters/LocalStorageAdapter.js`
 
-### P0 - Критические
+## Presentation Layer
 
-#### 1. Dependency array в useEffect
-**Файл:** `presentation/hooks/useDeviceController.js:252-267`
+Слой `presentation` отвечает за web-интерфейс симулятора.
 
-```javascript
-useEffect(() => {
-  const handler = (e) => { /* ... */ };
-  window.addEventListener("keydown", handler);
-  return () => window.removeEventListener("keydown", handler);
-}, [device.screen, device.calibration, nextCalibrationStep, handleAction]); // ✅ Добавлен dependency array
-```
+### Основные элементы
 
-#### 2. Очистка kinetic timer при unmount
-**Файл:** `presentation/hooks/useDeviceController.js:145-151`
+- интерактивная панель прибора
+- bitmap LCD с графиками
+- редактор подписей панели
+- редактор строк LCD
+- боковые панели состояния, CLI и USB-экспорта
 
-```javascript
-useEffect(() => {
-  return () => {
-    if (kineticTimerRef.current) {
-      clearInterval(kineticTimerRef.current);
-      kineticTimerRef.current = null;
-    }
-  };
-}, []); // ✅ Очистка при размонтировании
-```
+### Ключевые файлы
 
-### P1 - Важные
-
-#### 3. Рефакторинг handleAction
-**Файл:** `application/services/ScreenHandlers.js`
-
-Большая функция `handleAction` (200+ строк) разбита на отдельные обработчики:
-- `handleMainScreen()`
-- `handlePhotometryScreen()`
-- `handleCalibrationStepScreen()`
-- и т.д. (16 обработчиков)
-
-#### 4. Валидация CLI команд
-**Файл:** `application/services/CliService.js`
-
-Добавлена валидация:
-```javascript
-case "swl":
-case "swm": {
-  const parsed = parseFloat(arg || String(state.wavelength));
-  if (Number.isNaN(parsed)) {
-    return reply("Error: invalid wavelength");
-  }
-  // ...
-}
-```
-
-### P2 - Улучшения
-
-#### 5. Вынос констант и бизнес-логики
-- Все константы в `domain/constants/index.js`
-- Бизнес-логика в `domain/usecases/index.js`
-- Утилиты в `domain/usecases/utils.js`
+- `src/presentation/components/Ecros5400UvSimulator.jsx`
+- `src/presentation/components/InstrumentPanel.jsx`
+- `src/presentation/components/LcdCanvas.jsx`
+- `src/presentation/components/PanelLabelEditor.jsx`
+- `src/presentation/components/LcdTextEditor.jsx`
+- `src/presentation/hooks/useDeviceController.js`
 
 ## Поток данных
 
-```
-User Action (UI)
-    ↓
-Presentation Layer (handleAction)
-    ↓
-Application Layer (ScreenHandlers, DeviceService)
-    ↓
-Domain Layer (measureSample, validateWavelength)
-    ↓
-Application Layer (update state)
-    ↓
-Presentation Layer (re-render)
-```
+Сценарий работы в интерфейсе выглядит так:
 
-## Использование
+1. Пользователь нажимает кнопку панели или клавишу клавиатуры.
+2. `useDeviceController` принимает действие и передаёт его в нужный screen handler.
+3. Screen handler вызывает методы `DeviceService` или меняет состояние напрямую, если операция тривиальна.
+4. `LcdRenderer` пересчитывает строки LCD по новому состоянию.
+5. `LcdCanvas` отображает их как bitmap-глифы либо строит график.
 
-### Импорт из React компонента
+## Принципы изменений
 
-```jsx
-import { useDeviceController } from './src/hooks/useDeviceController';
+При дальнейшем развитии проекта стоит сохранять несколько правил:
 
-function MyComponent() {
-  const {
-    device,
-    handleAction,
-    executeCli,
-    resetAll,
-  } = useDeviceController();
+- новые вычисления и проверки добавлять сначала в `domain`
+- сценарии работы прибора размещать в `application/services`
+- не смешивать UI-логику и измерительную модель
+- пользовательские редакторы и инструменты держать в `presentation/components`
 
-  return (
-    <div>
-      <button onClick={() => handleAction('ZERO')}>ZERO</button>
-    </div>
-  );
-}
-```
+## Отдельные артефакты
 
-### Тестирование бизнес-логики
+Референс-материалы хранятся в `docs/` и не являются частью runtime:
 
-```javascript
-// Можно тестировать domain слой без React
-import { measureSample, validateWavelength } from './src/domain/usecases';
-
-describe('measureSample', () => {
-  it('должна возвращать корректные значения', () => {
-    const result = measureSample({
-      sample: 'reference',
-      wavelength: 546,
-      gain: 1,
-      e100: 33869,
-      darkValues: [39, 74, 152, 302, 585, 1079, 1880, 3148],
-    });
-    expect(result.a).toBe(0);
-  });
-});
-```
-
-## Преимущества новой архитектуры
-
-1. **Разделение ответственности** - каждый слой имеет чёткую задачу
-2. **Тестируемость** - domain слой можно тестировать без React
-3. **Поддерживаемость** - легче найти и исправить баги
-4. **Масштабируемость** - легко добавить новые функции
-5. **Читаемость** - код организован логически
-
-## Обратная совместимость
-
-Файл `ecros_5400_uv_simulator.jsx` теперь является wrapper'ом:
-
-```jsx
-import React from "react";
-import { Ecros5400UvSimulator } from "./src/index.js";
-
-export default Ecros5400UvSimulator;
-```
-
-## Будущие улучшения
-
-1. Добавить TypeScript для типизации
-2. Вынести контексты в отдельные файлы
-3. Добавить unit тесты для domain слоя
-4. Реализовать ports для мокирования зависимостей
+- спецификация глифов LCD
+- технические прототипы
+- фото и исходные материалы панели
