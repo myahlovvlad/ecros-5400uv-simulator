@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  body {
+    @apply bg-zinc-100 text-zinc-900 antialiased;
+    margin: 0;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .panel-button {
+    @apply flex items-center justify-center rounded-2xl border border-zinc-300 bg-stone-100 px-2 py-1 text-center font-semibold text-emerald-700 shadow-sm transition hover:-translate-y-px hover:bg-white;
+  }
+
+  .panel-button-round {
+    @apply rounded-full;
+  }
+}
