@@ -1,5 +1,17 @@
-import { DARK_VALUES, FILE_EXTENSIONS, VALID_FILE_RE, WL_MAX, WL_MIN, WARMUP_DURATION_SEC } from "../constants/index.js";
+import {
+  DARK_VALUES,
+  FILE_EXTENSIONS,
+  MULTIWAVE_COUNT_MAX,
+  MULTIWAVE_COUNT_MIN,
+  VALID_FILE_RE,
+  WL_MAX,
+  WL_MIN,
+  WARMUP_DURATION_SEC,
+} from "../constants/index.js";
 import { clamp, formatMmSs } from "./utils.js";
+
+const QUANT_CUVETTE_MIN_MM = 1;
+const QUANT_CUVETTE_MAX_MM = 100;
 
 export function referenceEnergyAt(wl) {
   const trend = 33880 - Math.abs(wl - 540) * 4.2;
@@ -58,6 +70,29 @@ export function measureSample({ sample, wavelength, gain, e100, darkValues, time
   };
 }
 
+export function measureMultiwaveSeries(state) {
+  const count = clamp(state.multiwave?.waveCount ?? MULTIWAVE_COUNT_MIN, MULTIWAVE_COUNT_MIN, MULTIWAVE_COUNT_MAX);
+  const wavelengths = state.multiwave?.wavelengths ?? [];
+
+  return wavelengths.slice(0, count).map((wavelength, index) => {
+    const measurement = measureSample({
+      sample: state.currentSample,
+      wavelength,
+      gain: state.gain,
+      e100: state.e100,
+      darkValues: state.darkValues,
+    });
+
+    return {
+      index: index + 1,
+      wavelength,
+      energy: measurement.energy,
+      a: measurement.a,
+      t: measurement.t,
+    };
+  });
+}
+
 export function fileExtByGroup(group) {
   return FILE_EXTENSIONS[group] || ".kin";
 }
@@ -71,6 +106,7 @@ export function seedFiles() {
     ГРАДУИРОВКА: [{ name: "FE_SERIES_V1", ext: ".std", exported: false }],
     КОЭФФИЦИЕНТ: [{ name: "PROTEIN_KB", ext: ".cof", exported: false }],
     КИНЕТИКА: [{ name: "REACTION_A", ext: ".kin", exported: false }],
+    МНОГОВОЛНОВЫЙ: [{ name: "WAVE_SCAN_220_260", ext: ".mwl", exported: false }],
   };
 }
 
@@ -127,13 +163,15 @@ export function buildUsbExportPreview({
   group,
   name,
   ext,
-  measurements,
-  calibrationPlan,
-  kineticPoints,
+  measurements = [],
+  calibrationPlan = [],
+  kineticPoints = [],
+  multiwaveResults = [],
   wavelength,
   quantK,
   quantB,
   lastA,
+  cuvetteLengthMm,
 }) {
   const lines = ["USB_DEVICE=USB1", `GROUP=${group}`, `FILE=${name}${ext}`, "EXPORT_FORMAT=csv", "---"];
 
@@ -169,8 +207,22 @@ export function buildUsbExportPreview({
 
   if (group === "КОЭФФИЦИЕНТ") {
     const result = quantK * lastA + quantB;
-    lines.push("wavelength_nm,K,B,A,result");
-    lines.push(`${wavelength.toFixed(1)},${quantK.toFixed(6)},${quantB.toFixed(6)},${lastA.toFixed(6)},${result.toFixed(6)}`);
+    lines.push("wavelength_nm,K,B,A,result,cuvette_length_mm");
+    lines.push(
+      `${wavelength.toFixed(1)},${quantK.toFixed(6)},${quantB.toFixed(6)},${lastA.toFixed(6)},${result.toFixed(6)},${cuvetteLengthMm ?? 10}`,
+    );
+    return lines.join("\n");
+  }
+
+  if (group === "МНОГОВОЛНОВЫЙ") {
+    lines.push("index,wavelength_nm,energy,A,T_percent");
+    if (!multiwaveResults.length) {
+      lines.push("1,,,,");
+    } else {
+      multiwaveResults.forEach((item) => {
+        lines.push(`${item.index},${item.wavelength.toFixed(1)},${item.energy},${item.a.toFixed(4)},${item.t.toFixed(2)}`);
+      });
+    }
     return lines.join("\n");
   }
 
@@ -214,10 +266,19 @@ export function initialDevice() {
     kineticLower: 0,
     quantK: 1,
     quantB: 0,
+    cuvetteLengthMm: 10,
+    multiwave: {
+      waveCount: 2,
+      wavelengths: [220.0, 260.0, null, null],
+      valueIndex: 0,
+      results: [],
+      editIndex: 0,
+    },
     e100: 33869,
     lastEnergy: 33869,
     lastComputedA: 0,
     lastComputedT: 100,
+    emulatorPaused: false,
     darkValues: [...DARK_VALUES],
     busy: false,
     busyLabel: "ПОДОЖДИТЕ",
@@ -265,12 +326,38 @@ export function validateWavelength(wl) {
   return { valid: true, value: clamp(parsed, WL_MIN, WL_MAX) };
 }
 
+export function validateMultiwaveCount(value) {
+  const parsed = typeof value === "string" ? parseFloat(value) : value;
+  if (Number.isNaN(parsed)) {
+    return { valid: false, error: "НЕВЕРНОЕ ЧИСЛО λ" };
+  }
+
+  const rounded = Math.round(parsed);
+  if (rounded < MULTIWAVE_COUNT_MIN || rounded > MULTIWAVE_COUNT_MAX) {
+    return { valid: false, error: `ЧИСЛО λ ${MULTIWAVE_COUNT_MIN}-${MULTIWAVE_COUNT_MAX}` };
+  }
+
+  return { valid: true, value: rounded };
+}
+
+export function validateMultiwaveWavelength(value) {
+  const validation = validateWavelength(value);
+  if (!validation.valid) return validation;
+  return { valid: true, value: Math.round(validation.value * 10) / 10 };
+}
+
 export function validateNumeric(value, min, max, fieldName = "ЗНАЧЕНИЕ") {
   const parsed = typeof value === "string" ? parseFloat(value) : value;
   if (Number.isNaN(parsed)) {
     return { valid: false, error: `НЕВЕРНЫЙ ${String(fieldName).toUpperCase()}` };
   }
   return { valid: true, value: clamp(parsed, min, max) };
+}
+
+export function validateQuantCuvetteLengthMm(value) {
+  const validation = validateNumeric(value, QUANT_CUVETTE_MIN_MM, QUANT_CUVETTE_MAX_MM, "ДЛИНА КЮВЕТЫ");
+  if (!validation.valid) return validation;
+  return { valid: true, value: Math.round(validation.value * 10) / 10 };
 }
 
 function assertDev(condition, message) {
@@ -284,6 +371,10 @@ export function runSelfTests() {
   assertDev(plan[5].code === "С-3-2", "last plan code should be С-3-2");
   assertDev(fileExtByGroup("ФОТОМЕТРИЯ") === ".qua", "photometry extension mismatch");
   assertDev(fileExtByGroup("ГРАДУИРОВКА") === ".std", "calibration extension mismatch");
+  assertDev(fileExtByGroup("МНОГОВОЛНОВЫЙ") === ".mwl", "multiwave extension mismatch");
+  assertDev(validateMultiwaveCount(2).valid, "multiwave min count should be valid");
+  assertDev(validateMultiwaveWavelength(220).valid, "multiwave wavelength should be valid");
+  assertDev(validateQuantCuvetteLengthMm(10).valid, "cuvette length should be valid");
   assertDev(clamp(15, 1, 9) === 9, "clamp upper bound mismatch");
   assertDev(clamp(-1, 1, 9) === 1, "clamp lower bound mismatch");
 }

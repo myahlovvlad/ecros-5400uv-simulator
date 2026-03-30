@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { PANEL_LABEL_DEFAULTS, PANEL_LABEL_FIELDS } from "./InstrumentPanel.jsx";
+import { StateBus } from "../../application/services/StateBus.js";
 
 function escapeCString(value) {
   return String(value)
@@ -10,6 +11,7 @@ function escapeCString(value) {
 
 export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onChange, onReset }) {
   const [copied, setCopied] = useState(false);
+  const [liveLabels, setLiveLabels] = useState(labels);
 
   const groups = useMemo(() => {
     return PANEL_LABEL_FIELDS.reduce((acc, field) => {
@@ -23,6 +25,16 @@ export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onCha
     return PANEL_LABEL_FIELDS.find((field) => field.id === selectedFieldId) ?? PANEL_LABEL_FIELDS[0];
   }, [selectedFieldId]);
 
+  useEffect(() => {
+    setLiveLabels(labels);
+  }, [labels]);
+
+  useEffect(() => {
+    return StateBus.on("labels:changed", (nextLabels) => {
+      setLiveLabels(nextLabels);
+    });
+  }, []);
+
   const generatedCode = useMemo(() => {
     const lines = [
       "typedef struct {",
@@ -34,12 +46,12 @@ export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onCha
     ];
 
     PANEL_LABEL_FIELDS.forEach((field) => {
-      lines.push(`  { "${field.id}", "${escapeCString(labels[field.id] ?? "")}" },`);
+      lines.push(`  { "${field.id}", "${escapeCString(liveLabels[field.id] ?? "")}" },`);
     });
 
     lines.push("};");
     return lines.join("\n");
-  }, [labels]);
+  }, [liveLabels]);
 
   const handleCopy = async () => {
     if (navigator.clipboard?.writeText) {
@@ -55,7 +67,7 @@ export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onCha
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Редактор надписей</h2>
-            <p className="text-sm text-zinc-500">Клик по элементу панели выбирает надпись для редактирования.</p>
+            <p className="text-sm text-zinc-500">Все подписи редактируются через одно центральное поле.</p>
           </div>
           <button
             type="button"
@@ -70,6 +82,7 @@ export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onCha
           <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">Активное поле</div>
           <div className="mb-2 text-sm font-medium text-zinc-800">{selectedField.label}</div>
           <input
+            aria-label={`Надпись панели: ${selectedField.label}`}
             value={labels[selectedField.id] ?? ""}
             onChange={(event) => onChange(selectedField.id, event.target.value)}
             className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 outline-none transition focus:border-emerald-500"
@@ -105,7 +118,7 @@ export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onCha
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Генератор C-кода</h2>
-            <p className="text-sm text-zinc-500">Вывод формируется из текущего набора надписей панели.</p>
+            <p className="text-sm text-zinc-500">Показывает актуальные подписи панели в том регистре, в котором они введены.</p>
           </div>
           <button
             type="button"
@@ -116,6 +129,7 @@ export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onCha
           </button>
         </div>
         <textarea
+          aria-label="Сгенерированный C-код надписей панели"
           readOnly
           value={generatedCode}
           className="min-h-[420px] w-full rounded-2xl border border-zinc-200 bg-zinc-950 p-3 font-mono text-xs text-emerald-300 outline-none"

@@ -10,6 +10,7 @@ export * from './domain/usecases/index.js';
 // Application Layer
 export { DeviceService } from './application/services/DeviceService.js';
 export { CliService } from './application/services/CliService.js';
+export { StateBus } from './application/services/StateBus.js';
 export * from './application/services/ScreenHandlers.js';
 export * from './application/ports/index.js';
 

@@ -7,7 +7,7 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 3000,
     strictPort: true,
-    open: true,
+    open: process.env.PLAYWRIGHT !== '1',
   },
   build: {
     outDir: 'dist',

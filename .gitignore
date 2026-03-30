@@ -31,6 +31,9 @@ Thumbs.db
 
 # Tests
 coverage/
+playwright-report/
+test-results/
+qa-artifacts/
 
 # TypeScript
 *.tsbuildinfo

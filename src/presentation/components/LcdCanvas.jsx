@@ -1,187 +1,18 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { LCD_H, LCD_SCALE, LCD_W } from "../../domain/constants/index.js";
-import { getLcdRows } from "../../infrastructure/adapters/LcdRenderer.js";
+import { getLcdRows, getRenderableRows, LCDRenderer } from "../../infrastructure/adapters/LcdRenderer.js";
 
 const LCD_FG = "#0f172a";
 const LCD_BG = "#edf2ed";
 const LCD_GRID_COLOR = "rgba(15, 23, 42, 0.18)";
 const LCD_MARGIN = 3;
 const GLYPH_H = 8;
-const SPACE_W = 5;
 
-function rowsFromStrings(strings) {
-  return strings.map((row) =>
-    Array.from(String(row)).map((char) => {
-      if (char === "#" || char === "1") return 1;
-      return 0;
-    }),
-  );
-}
-
-const UNKNOWN_GLYPH = rowsFromStrings([
-  "11111",
-  "10001",
-  "10101",
-  "10001",
-  "10101",
-  "10001",
-  "10001",
-  "11111",
-]);
-
-const FONT_BITMAP = (() => {
-  const map = {};
-  const add = (chars, rows) => chars.forEach((char) => { map[char] = rowsFromStrings(rows); });
-
-  add(["0"], [".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", "#...#", ".###."]);
-  add(["1"], ["..#.", ".##.", "#.#.", "..#.", "..#.", "..#.", "..#.", "####"]);
-  add(["2"], [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#....", "#####"]);
-  add(["3"], [".###.", "#...#", "....#", "..##.", "....#", "....#", "#...#", ".###."]);
-  add(["4"], ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#.", "...#."]);
-  add(["5"], ["#####", "#....", "#....", "####.", "....#", "....#", "#...#", ".###."]);
-  add(["6"], ["..##.", ".#...", "#....", "####.", "#...#", "#...#", "#...#", ".###."]);
-  add(["7"], ["#####", "....#", "...#.", "...#.", "..#..", "..#..", ".#...", ".#..."]);
-  add(["8"], [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", "#...#", ".###."]);
-  add(["9"], [".###.", "#...#", "#...#", "#...#", ".####", "....#", "...#.", ".##.."]);
-
-  add(["А"], ["..#..", ".#.#.", ".#.#.", "#...#", "#...#", "#####", "#...#", "#...#"]);
-  add(["Б"], ["#####", "#....", "#....", "####.", "#...#", "#...#", "#...#", "####."]);
-  add(["В"], ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "#...#", "####."]);
-  add(["Г"], ["#####", "#....", "#....", "#....", "#....", "#....", "#....", "#...."]);
-  add(["Д"], ["..###..", "..#.#..", ".#...#.", ".#...#.", "#.....#", "#######", "#.....#", "#.....#"]);
-  add(["Е"], ["#####", "#....", "#....", "####.", "#....", "#....", "#....", "#####"]);
-  add(["Ё"], ["#####", "#....", "#....", "####.", "#....", "#....", "#....", "#####"]);
-  add(["Ж"], ["#..#..#", "#..#..#", ".#.#.#.", "..###..", "..###..", ".#.#.#.", "#..#..#", "#..#..#"]);
-  add(["З"], [".###.", "#...#", "....#", "..##.", "....#", "....#", "#...#", ".###."]);
-  add(["И"], ["#...#", "#...#", "#...#", "#..##", "#.#.#", "##..#", "#...#", "#...#"]);
-  add(["Й"], ["#...#", "#...#", "#...#", "#..##", "#.#.#", "##..#", "#...#", "#...#"]);
-  add(["К"], ["#...#", "#..#.", "#.#..", "##...", "##...", "#.#..", "#..#.", "#...#"]);
-  add(["Л"], [".####", ".#..#", ".#..#", "#...#", "#...#", "#...#", "#...#", "#...#"]);
-  add(["М"], ["#.....#", "##...##", "#.#.#.#", "#..#..#", "#.....#", "#.....#", "#.....#", "#.....#"]);
-  add(["Н"], ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#", "#...#"]);
-  add(["О"], [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."]);
-  add(["П"], ["#####", "#...#", "#...#", "#...#", "#...#", "#...#", "#...#", "#...#"]);
-  add(["Р"], ["####.", "#...#", "#...#", "####.", "#....", "#....", "#....", "#...."]);
-  add(["С"], [".###.", "#...#", "#....", "#....", "#....", "#....", "#...#", ".###."]);
-  add(["Т"], ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."]);
-  add(["У"], ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", ".#...", "#...."]);
-  add(["Ф"], ["...#...", "...#...", ".#####.", "#..#..#", "#..#..#", ".#####.", "...#...", "...#..."]);
-  add(["Х"], ["#...#", "#...#", ".#.#.", "..#..", "..#..", ".#.#.", "#...#", "#...#"]);
-  add(["Ц"], ["#....#", "#....#", "#....#", "#....#", "#....#", "#....#", "######", ".....#"]);
-  add(["Ч"], ["#...#", "#...#", "#...#", ".####", "....#", "....#", "....#", "....#"]);
-  add(["Ш"], ["#..#..#", "#..#..#", "#..#..#", "#..#..#", "#..#..#", "#..#..#", "#..#..#", "#######"]);
-  add(["Щ"], ["#..#..#", "#..#..#", "#..#..#", "#..#..#", "#..#..#", "#..#..#", "#######", "......#"]);
-  add(["Ъ"], ["##....", ".#....", ".#....", ".####.", ".#...#", ".#...#", ".#...#", ".####."]);
-  add(["Ы"], ["#.....#", "#.....#", "#.....#", "####..#", "#...#.#", "#...#.#", "#...#.#", "####..#"]);
-  add(["Ь"], ["#....", "#....", "#....", "####.", "#...#", "#...#", "#...#", "####."]);
-  add(["Э"], [".###.", "#...#", "....#", "....#", "..###", "....#", "#...#", ".###."]);
-  add(["Ю"], ["#...##.", "#..#..#", "#..#..#", "####..#", "#..#..#", "#..#..#", "#..#..#", "#...##."]);
-  add(["Я"], [".####", "#...#", "#...#", ".####", "..#.#", ".#..#", "#...#", "#...#"]);
-
-  add(["A"], ["..#..", ".#.#.", ".#.#.", "#...#", "#...#", "#####", "#...#", "#...#"]);
-  add(["B"], ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "#...#", "####."]);
-  add(["C"], [".###.", "#...#", "#....", "#....", "#....", "#....", "#...#", ".###."]);
-  add(["D"], ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "#...#", "####."]);
-  add(["E"], ["#####", "#....", "#....", "####.", "#....", "#....", "#....", "#####"]);
-  add(["F"], ["#####", "#....", "#....", "####.", "#....", "#....", "#....", "#...."]);
-  add(["G"], [".###.", "#...#", "#....", "#....", "#.###", "#...#", "#...#", ".###."]);
-  add(["H"], ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#", "#...#"]);
-  add(["I"], ["###", ".#.", ".#.", ".#.", ".#.", ".#.", ".#.", "###"]);
-  add(["J"], ["..###", "...#.", "...#.", "...#.", "...#.", "#..#.", "#..#.", ".##.."]);
-  add(["K"], ["#...#", "#..#.", "#.#..", "##...", "##...", "#.#..", "#..#.", "#...#"]);
-  add(["L"], ["#....", "#....", "#....", "#....", "#....", "#....", "#....", "#####"]);
-  add(["M"], ["#.....#", "##...##", "#.#.#.#", "#..#..#", "#.....#", "#.....#", "#.....#", "#.....#"]);
-  add(["N"], ["#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#", "#...#"]);
-  add(["O"], [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."]);
-  add(["P"], ["####.", "#...#", "#...#", "####.", "#....", "#....", "#....", "#...."]);
-  add(["Q"], [".###.", "#...#", "#...#", "#...#", "#...#", "#.#.#", "#..#.", ".##.#"]);
-  add(["R"], ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#", "#...#"]);
-  add(["S"], [".###.", "#...#", "#....", ".###.", "....#", "....#", "#...#", ".###."]);
-  add(["T"], ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."]);
-  add(["U"], ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."]);
-  add(["V"], ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."]);
-  add(["W"], ["#.....#", "#.....#", "#.....#", "#..#..#", "#..#..#", "#.#.#.#", "##...##", "#.....#"]);
-  add(["X"], ["#...#", "#...#", ".#.#.", "..#..", "..#..", ".#.#.", "#...#", "#...#"]);
-  add(["Y"], ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#..", "..#.."]);
-  add(["Z"], ["#####", "....#", "...#.", "..#..", ".#...", "#....", "#....", "#####"]);
-
-  add(["Λ", "λ"], ["#....", "#....", ".#...", ".#...", "..#..", "..#..", ".#.#.", "#...#"]);
-  add(["№"], ["#...##.", "##.#..#", "#.##..#", "#..#..#", "#...##.", ".......", "#######", "......."]);
-  add(["."], [".", ".", ".", ".", ".", ".", ".", "#"]);
-  add([","], ["..", "..", "..", "..", "..", "..", ".#", "#."]);
-  add([":"], [".", ".", "#", ".", ".", ".", "#", "."]);
-  add(["/"], ["...#", "...#", "..#.", "..#.", ".#..", ".#..", "#...", "#..."]);
-  add(["+"], [".....", "..#..", "..#..", "#####", "..#..", "..#..", ".....", "....."]);
-  add(["-"], [".....", ".....", ".....", "#####", ".....", ".....", ".....", "....."]);
-  add(["%"], ["##...", "##..#", "...#.", "...#.", "..#..", ".#...", "#..##", "...##"]);
-  add(["="], [".....", ".....", "#####", ".....", "#####", ".....", ".....", "....."]);
-  add(["_"], [".....", ".....", ".....", ".....", ".....", ".....", ".....", "#####"]);
-  add(["["], ["###", "#..", "#..", "#..", "#..", "#..", "#..", "###"]);
-  add(["]"], ["###", "..#", "..#", "..#", "..#", "..#", "..#", "###"]);
-  add(["?"], [".###.", "#...#", "....#", "...#.", "..#..", ".....", "..#..", "....."]);
-  add([";"], [".", ".", "#", ".", ".", ".", "#", "."]);
-  add([" "], ["...", "...", "...", "...", "...", "...", "...", "..."]);
-
-  return map;
-})();
-
-function normalizeFontChar(char) {
-  if (FONT_BITMAP[char]) return char;
-  const upper = char.toUpperCase();
-  if (FONT_BITMAP[upper]) return upper;
-  return char;
-}
-
-function getGlyphBitmap(char) {
-  const key = normalizeFontChar(char);
-  return FONT_BITMAP[key] || UNKNOWN_GLYPH;
-}
-
-function drawBitmapGlyph(ctx, glyph, x, y, inverted = false) {
-  ctx.fillStyle = inverted ? LCD_BG : LCD_FG;
-  glyph.forEach((row, rowIndex) => {
-    row.forEach((value, colIndex) => {
-      if (value) ctx.fillRect(x + colIndex, y + rowIndex, 1, 1);
-    });
-  });
-}
-
-function drawBitmapText(ctx, text, x, y, inverted = false) {
-  let cursorX = x;
-  const maxX = LCD_W - LCD_MARGIN;
-
-  Array.from(text).forEach((char) => {
-    const glyph = getGlyphBitmap(char);
-    const glyphWidth = glyph[0]?.length ?? 5;
-    if (cursorX + glyphWidth > maxX) return;
-    drawBitmapGlyph(ctx, glyph, cursorX, y, inverted);
-    cursorX += char === " " ? SPACE_W : glyphWidth + 1;
-  });
-}
-
-function drawBitmapRows(ctx, rows) {
-  const trimmedRows = [...rows];
-  while (trimmedRows.length && !trimmedRows[trimmedRows.length - 1].text.trim()) trimmedRows.pop();
-
-  const nonEmptyCount = trimmedRows.filter((row) => row.text.trim()).length;
-  const rowStep = nonEmptyCount <= 5 ? GLYPH_H + 3 : GLYPH_H + 1;
-
-  ctx.fillStyle = LCD_BG;
-  ctx.fillRect(0, 0, LCD_W, LCD_H);
-
-  trimmedRows.forEach((row, rowIndex) => {
-    const y = LCD_MARGIN + rowIndex * rowStep;
-    if (y + GLYPH_H > LCD_H - LCD_MARGIN) return;
-    if (row.inverted) {
-      ctx.fillStyle = LCD_FG;
-      ctx.fillRect(LCD_MARGIN, y, LCD_W - LCD_MARGIN * 2, GLYPH_H);
-    }
-    drawBitmapText(ctx, row.text.trimEnd(), LCD_MARGIN, y, row.inverted);
-  });
-
-  ctx.strokeStyle = LCD_FG;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, 0.5, LCD_W - 1, LCD_H - 1);
+function drawText(ctx, text, x, y) {
+  ctx.fillStyle = LCD_FG;
+  ctx.font = "8px monospace";
+  ctx.textBaseline = "top";
+  ctx.fillText(text, x, y);
 }
 
 function renderGraph(ctx, values, { minY, maxY, title, xLabel, yLabel }) {
@@ -197,14 +28,14 @@ function renderGraph(ctx, values, { minY, maxY, title, xLabel, yLabel }) {
   ctx.lineWidth = 1;
   ctx.strokeRect(x0, y0, width, height);
 
-  drawBitmapText(ctx, title.slice(0, 18), LCD_MARGIN, LCD_MARGIN, false);
-  drawBitmapText(ctx, yLabel.slice(0, 1), LCD_MARGIN, y0 + 1, false);
-  drawBitmapText(ctx, xLabel.slice(0, 2), x0 + width - 10, y0 + height + 2, false);
-  drawBitmapText(ctx, String(maxY.toFixed(2)).slice(0, 5), LCD_MARGIN, y0 + 1, false);
-  drawBitmapText(ctx, String(minY.toFixed(2)).slice(0, 5), LCD_MARGIN, y0 + height - 6, false);
+  drawText(ctx, title.slice(0, 18), LCD_MARGIN, LCD_MARGIN);
+  drawText(ctx, yLabel.slice(0, 1), LCD_MARGIN, y0 + 1);
+  drawText(ctx, xLabel.slice(0, 2), x0 + width - 10, y0 + height + 2);
+  drawText(ctx, String(maxY.toFixed(2)).slice(0, 5), LCD_MARGIN, y0 + 1);
+  drawText(ctx, String(minY.toFixed(2)).slice(0, 5), LCD_MARGIN, y0 + height - 6);
 
   if (!values.length) {
-    drawBitmapText(ctx, "НЕТ ДАННЫХ", 28, 30, false);
+    drawText(ctx, "НЕТ ДАННЫХ", 28, 30);
     return;
   }
 
@@ -214,76 +45,166 @@ function renderGraph(ctx, values, { minY, maxY, title, xLabel, yLabel }) {
 
   ctx.beginPath();
   values.forEach((value, index) => {
-    const x = x0 + (index / Math.max(1, values.length - 1)) * (width - 2) + 1;
-    const y = y0 + height - 1 - ((value - safeMin) / range) * (height - 2);
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+    const pointX = x0 + (index / Math.max(1, values.length - 1)) * (width - 2) + 1;
+    const pointY = y0 + height - 1 - ((value - safeMin) / range) * (height - 2);
+    if (index === 0) ctx.moveTo(pointX, pointY);
+    else ctx.lineTo(pointX, pointY);
   });
   ctx.stroke();
 }
 
-export function LcdCanvas({ device, scale = LCD_SCALE, rowsOverride = null }) {
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+export function LcdCanvas({
+  device,
+  scale = LCD_SCALE,
+  rowsOverride = null,
+  editorEnabled = false,
+  selectedRowIndex = null,
+  titleUnderline = false,
+  onSelectRow,
+  onMoveRow,
+  onCanvasReady,
+}) {
   const ref = useRef(null);
+  const dragStateRef = useRef(null);
   const rows = useMemo(() => rowsOverride ?? getLcdRows(device), [device, rowsOverride]);
+  const renderableRows = useMemo(() => getRenderableRows(rows), [rows]);
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
+    onCanvasReady?.(canvas);
+  }, [onCanvasReady]);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return undefined;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) return undefined;
     ctx.imageSmoothingEnabled = false;
 
-    if (!rowsOverride && device.screen === "photometryGraph") {
-      renderGraph(ctx, device.measurements.map((measurement) => measurement.a), {
-        minY: 0,
-        maxY: Math.max(1, ...device.measurements.map((measurement) => measurement.a), 1),
-        title: "ГРАФИК ФОТОМЕТР.",
-        xLabel: "№",
-        yLabel: "А",
-      });
-      return;
-    }
+    const frameId = window.requestAnimationFrame(() => {
+      if (!rowsOverride && device.screen === "photometryGraph") {
+        renderGraph(ctx, device.measurements.map((measurement) => measurement.a), {
+          minY: 0,
+          maxY: Math.max(1, ...device.measurements.map((measurement) => measurement.a), 1),
+          title: "ГРАФИК ФОТОМЕТР.",
+          xLabel: "№",
+          yLabel: "A",
+        });
+        return;
+      }
 
-    if (!rowsOverride && device.screen === "kineticsGraph") {
-      renderGraph(ctx, device.kineticPoints.map((point) => point.value), {
-        minY: device.kineticLower,
-        maxY: Math.max(device.kineticUpper, ...device.kineticPoints.map((point) => point.value), device.kineticUpper),
-        title: "КИНЕТИЧ. КРИВАЯ",
-        xLabel: "С",
-        yLabel: "А",
-      });
-      return;
-    }
+      if (!rowsOverride && device.screen === "kineticsGraph") {
+        renderGraph(ctx, device.kineticPoints.map((point) => point.value), {
+          minY: device.kineticLower,
+          maxY: Math.max(device.kineticUpper, ...device.kineticPoints.map((point) => point.value), device.kineticUpper),
+          title: "КИНЕТИЧ. КРИВАЯ",
+          xLabel: "С",
+          yLabel: "A",
+        });
+        return;
+      }
 
-    if (!rowsOverride && device.screen === "calibrationGraph") {
-      const values = device.calibration.plan.filter((step) => step.result).map((step) => step.result.a);
-      renderGraph(ctx, values, {
-        minY: 0,
-        maxY: Math.max(1, ...values, 1),
-        title: "ТЕКУЩАЯ ГРАДУИР.",
-        xLabel: "№",
-        yLabel: "А",
-      });
-      return;
-    }
+      if (!rowsOverride && device.screen === "calibrationGraph") {
+        const values = device.calibration.plan.filter((step) => step.result).map((step) => step.result.a);
+        renderGraph(ctx, values, {
+          minY: 0,
+          maxY: Math.max(1, ...values, 1),
+          title: "ТЕКУЩАЯ ГРАДУИР.",
+          xLabel: "№",
+          yLabel: "A",
+        });
+        return;
+      }
 
-    drawBitmapRows(ctx, rows);
-  }, [device, rows]);
+      LCDRenderer.render(ctx, rows, { editorEnabled, selectedRowIndex, titleUnderline });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [device, editorEnabled, rows, rowsOverride, selectedRowIndex, titleUnderline]);
+
+  const getCanvasPoint = (event) => {
+    const canvas = ref.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: ((event.clientX - rect.left) / rect.width) * LCD_W,
+      y: ((event.clientY - rect.top) / rect.height) * LCD_H,
+    };
+  };
+
+  const handlePointerDown = (event) => {
+    if (!editorEnabled || !onMoveRow) return;
+    const point = getCanvasPoint(event);
+    if (!point) return;
+
+    const hitIndex = [...renderableRows]
+      .map((row, index) => ({ row, index }))
+      .reverse()
+      .find(({ row }) => (
+        point.x >= row.x - 2 &&
+        point.x <= row.x + row.width + 2 &&
+        point.y >= row.y - 2 &&
+        point.y <= row.y + row.height + 2
+      ))?.index;
+
+    if (typeof hitIndex !== "number") return;
+
+    const row = renderableRows[hitIndex];
+    onSelectRow?.(hitIndex);
+    dragStateRef.current = {
+      index: hitIndex,
+      offsetX: point.x - row.x,
+      offsetY: point.y - row.y,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handlePointerMove = (event) => {
+    if (!editorEnabled || !dragStateRef.current || !onMoveRow) return;
+    const point = getCanvasPoint(event);
+    if (!point) return;
+    const { index, offsetX, offsetY } = dragStateRef.current;
+    const row = renderableRows[index];
+    const nextX = clamp(Math.round(point.x - offsetX), 0, Math.max(0, LCD_W - row.width - LCD_MARGIN));
+    const nextY = clamp(Math.round(point.y - offsetY), 0, Math.max(0, LCD_H - GLYPH_H - LCD_MARGIN));
+    onMoveRow(index, { x: nextX, y: nextY });
+  };
+
+  const handlePointerUp = (event) => {
+    dragStateRef.current = null;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+  };
 
   return (
     <div
-      className="relative rounded-md border-4 border-zinc-200 bg-[#edf2ed] shadow-inner"
-      style={{ width: `${LCD_W * scale}px`, height: `${LCD_H * scale}px` }}
+      data-testid="lcd-canvas-frame"
+      className="relative overflow-hidden rounded-md border-4 border-zinc-200 bg-[#edf2ed] shadow-inner"
+      style={{
+        width: "100%",
+        maxWidth: `${LCD_W * scale}px`,
+        aspectRatio: `${LCD_W} / ${LCD_H}`,
+      }}
     >
       <canvas
         ref={ref}
+        data-testid="lcd-canvas"
         width={LCD_W}
         height={LCD_H}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         style={{
-          width: `${LCD_W * scale}px`,
-          height: `${LCD_H * scale}px`,
+          width: "100%",
+          height: "100%",
           imageRendering: "pixelated",
           display: "block",
+          cursor: editorEnabled ? "move" : "default",
         }}
       />
       <div

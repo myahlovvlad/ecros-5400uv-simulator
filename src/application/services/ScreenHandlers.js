@@ -3,6 +3,7 @@ import {
   FILE_GROUPS,
   MENU_KINETICS,
   MENU_MAIN,
+  MENU_MULTIWAVE,
   MENU_PHOTOMETRY_VALUE,
   MENU_QUANT,
   MENU_SETTINGS,
@@ -10,8 +11,14 @@ import {
 } from "../../domain/constants/index.js";
 import { buildCalibrationPlan, getCalibrationResultIndexes } from "../../domain/usecases/index.js";
 
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function openMultiwaveFileFlow(state, actions) {
+  const { openFileManager, openSaveDialog } = actions;
+  if (state.multiwave.results.length) return openSaveDialog("МНОГОВОЛНОВЫЙ", state.screen);
+  return openFileManager("МНОГОВОЛНОВЫЙ", "browse", state.screen);
 }
 
 export function handleMainScreen(state, action, actions) {
@@ -25,7 +32,8 @@ export function handleMainScreen(state, action, actions) {
     if (state.mainIndex === 0) return setDevice((d) => ({ ...d, screen: "photometry" }));
     if (state.mainIndex === 1) return setDevice((d) => ({ ...d, screen: "quantMain" }));
     if (state.mainIndex === 2) return setDevice((d) => ({ ...d, screen: "kineticsMenu" }));
-    if (state.mainIndex === 3) return setDevice((d) => ({ ...d, screen: "settings" }));
+    if (state.mainIndex === 3) return setDevice((d) => ({ ...d, screen: "multiwaveMenu" }));
+    if (state.mainIndex === 4) return setDevice((d) => ({ ...d, screen: "settings" }));
   }
 }
 
@@ -52,7 +60,7 @@ export function handleFileListScreen(state, action, actions) {
 }
 
 export function handleFileActionMenuScreen(state, action, actions) {
-  const { setDevice, deleteFile, exportFile, openRenameDialog, logLine, showWarning } = actions;
+  const { setDevice, deleteFile, exportFile, openFile, openRenameDialog, logLine, showWarning } = actions;
   const group = state.fileContext.group;
   const files = state.files[group] || [];
   const selected = files[state.fileListIndex];
@@ -64,7 +72,12 @@ export function handleFileActionMenuScreen(state, action, actions) {
   if (action === "ENTER" && selected) {
     const currentAction = FILE_ACTIONS[state.fileActionIndex];
 
-    if (currentAction === "ОТКРЫТЬ") return showWarning("ОТКРЫТИЕ", `${selected.name}${selected.ext}`, "fileList");
+    if (currentAction === "ОТКРЫТЬ") {
+      const result = openFile(group, state.fileListIndex);
+      if (result.error) return showWarning(result.error.title, result.error.body, result.error.returnScreen);
+      logLine(result.logEntry);
+      return setDevice(result.newState);
+    }
     if (currentAction === "ПЕРЕИМЕНОВАТЬ") return openRenameDialog(selected.name);
     if (currentAction === "УДАЛИТЬ") {
       const result = deleteFile(group, state.fileListIndex);
@@ -83,7 +96,7 @@ export function handleFileActionMenuScreen(state, action, actions) {
 export function handlePhotometryScreen(state, action, actions) {
   const { setDevice, performRezero, performPhotometryMeasure, openFileManager, openSaveDialog } = actions;
 
-  if (action === "GOTOλ") {
+  if (action === "GOTOО»") {
     return setDevice((d) => ({
       ...d,
       screen: "input",
@@ -130,6 +143,16 @@ export function handleQuantMainScreen(state, action, actions) {
     if (state.quantIndex === 0) return setDevice((d) => ({ ...d, screen: "calibrationSetupStandards" }));
     if (state.quantIndex === 1) return setDevice((d) => ({ ...d, screen: "quantCoef" }));
     if (state.quantIndex === 2) return setDevice((d) => ({ ...d, screen: "quantUnits" }));
+    if (state.quantIndex === 3) {
+      return setDevice((d) => ({
+        ...d,
+        screen: "input",
+        inputTarget: "quantCuvetteLengthMm",
+        inputBuffer: String(d.cuvetteLengthMm ?? 10),
+        dialogTitle: "ДЛИНА КЮВЕТЫ, ММ",
+        returnScreen: "quantMain",
+      }));
+    }
   }
   if (action === "ESC") return setDevice((d) => ({ ...d, screen: "main" }));
 }
@@ -153,7 +176,7 @@ export function handleQuantCoefScreen(state, action, actions) {
   if (action === "2") {
     return setDevice((d) => ({ ...d, screen: "input", inputTarget: "quantB", inputBuffer: String(d.quantB), dialogTitle: "ВВЕДИТЕ Б", returnScreen: "quantCoef" }));
   }
-  if (action === "GOTOλ") {
+  if (action === "GOTOО»") {
     return setDevice((d) => ({
       ...d,
       screen: "input",
@@ -247,7 +270,7 @@ export function handleKineticsMenuScreen(state, action, actions) {
     if (state.kineticsIndex === 4) return startKinetics();
   }
   if (action === "ZERO") return performRezero();
-  if (action === "GOTOλ") {
+  if (action === "GOTOО»") {
     return setDevice((d) => ({
       ...d,
       screen: "input",
@@ -268,6 +291,84 @@ export function handleKineticsRunScreen(state, action, actions) {
   if (action === "DOWN") return setDevice((d) => ({ ...d, screen: "kineticsGraph" }));
   if (action === "FILE") return openSaveDialog("КИНЕТИКА", "kineticsRun");
   if (action === "ESC") return stopKinetics();
+}
+
+export function handleMultiwaveMenuScreen(state, action, actions) {
+  const { setDevice, performRezero, performMultiwaveMeasure } = actions;
+
+  if (action === "UP") return setDevice((d) => ({ ...d, multiwave: { ...d.multiwave, editIndex: (d.multiwave.editIndex + MENU_MULTIWAVE.length - 1) % MENU_MULTIWAVE.length } }));
+  if (action === "DOWN") return setDevice((d) => ({ ...d, multiwave: { ...d.multiwave, editIndex: (d.multiwave.editIndex + 1) % MENU_MULTIWAVE.length } }));
+  if (action === "ZERO") return performRezero();
+  if (action === "START/STOP") return performMultiwaveMeasure();
+  if (action === "FILE") return openMultiwaveFileFlow(state, actions);
+  if (action === "ENTER") {
+    if (state.multiwave.editIndex === 0) return setDevice((d) => ({ ...d, screen: "multiwaveWaveCount" }));
+    if (state.multiwave.editIndex === 1) return setDevice((d) => ({ ...d, screen: "multiwaveWaveEntry" }));
+    if (state.multiwave.editIndex === 2) return setDevice((d) => ({ ...d, screen: "multiwaveValue" }));
+    if (state.multiwave.editIndex === 3) return performMultiwaveMeasure();
+  }
+  if (action === "ESC") return setDevice((d) => ({ ...d, screen: "main" }));
+}
+
+export function handleMultiwaveWaveCountScreen(state, action, actions) {
+  const { setDevice } = actions;
+
+  if (action === "UP") return setDevice((d) => ({ ...d, multiwave: { ...d.multiwave, waveCount: clamp(d.multiwave.waveCount + 1, 2, 4) } }));
+  if (action === "DOWN") return setDevice((d) => ({ ...d, multiwave: { ...d.multiwave, waveCount: clamp(d.multiwave.waveCount - 1, 2, 4) } }));
+  if (action === "ENTER") {
+    return setDevice((d) => ({
+      ...d,
+      screen: "input",
+      inputTarget: "multiwaveCount",
+      inputBuffer: String(d.multiwave.waveCount),
+      dialogTitle: "ЧИСЛО λ",
+      returnScreen: "multiwaveWaveCount",
+    }));
+  }
+  if (action === "FILE") return openMultiwaveFileFlow(state, actions);
+  if (action === "ESC") return setDevice((d) => ({ ...d, screen: "multiwaveMenu" }));
+}
+
+export function handleMultiwaveWaveEntryScreen(state, action, actions) {
+  const { setDevice, performRezero, performMultiwaveMeasure } = actions;
+  const maxIndex = Math.max(0, state.multiwave.waveCount - 1);
+
+  if (action === "UP") return setDevice((d) => ({ ...d, multiwave: { ...d.multiwave, editIndex: clamp(d.multiwave.editIndex - 1, 0, maxIndex) } }));
+  if (action === "DOWN") return setDevice((d) => ({ ...d, multiwave: { ...d.multiwave, editIndex: clamp(d.multiwave.editIndex + 1, 0, maxIndex) } }));
+  if (action === "ZERO") return performRezero();
+  if (action === "START/STOP") return performMultiwaveMeasure();
+  if (action === "FILE") return openMultiwaveFileFlow(state, actions);
+  if (action === "ENTER") {
+    const slot = clamp(state.multiwave.editIndex, 0, maxIndex);
+    const currentValue = state.multiwave.wavelengths[slot];
+    return setDevice((d) => ({
+      ...d,
+      screen: "input",
+      inputTarget: `multiwaveWavelength${slot}`,
+      inputBuffer: currentValue == null ? "" : currentValue.toFixed(1),
+      dialogTitle: `ВВЕДИТЕ λ${slot + 1}`,
+      returnScreen: "multiwaveWaveEntry",
+    }));
+  }
+  if (action === "ESC") return setDevice((d) => ({ ...d, screen: "multiwaveMenu" }));
+}
+
+export function handleMultiwaveValueScreen(state, action, actions) {
+  const { setDevice, setMultiwaveValueMode } = actions;
+
+  if (action === "UP") return setMultiwaveValueMode((state.multiwave.valueIndex + MENU_PHOTOMETRY_VALUE.length - 1) % MENU_PHOTOMETRY_VALUE.length);
+  if (action === "DOWN") return setMultiwaveValueMode((state.multiwave.valueIndex + 1) % MENU_PHOTOMETRY_VALUE.length);
+  if (action === "ENTER" || action === "ESC") return setDevice((d) => ({ ...d, screen: "multiwaveMenu" }));
+  if (action === "FILE") return openMultiwaveFileFlow(state, actions);
+}
+
+export function handleMultiwaveResultsScreen(state, action, actions) {
+  const { setDevice, performRezero, performMultiwaveMeasure } = actions;
+
+  if (action === "ZERO") return performRezero();
+  if (action === "START/STOP") return performMultiwaveMeasure();
+  if (action === "FILE") return openMultiwaveFileFlow(state, actions);
+  if (action === "ESC") return setDevice((d) => ({ ...d, screen: "multiwaveMenu" }));
 }
 
 export function handleSettingsScreen(state, action, actions) {

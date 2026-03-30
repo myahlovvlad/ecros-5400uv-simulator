@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-03-30T14:33:16.565Z",
+  "environment": {
+    "node": "v24.11.0",
+    "platform": "win32"
+  },
+  "unit": {
+    "available": true,
+    "passed": 34,
+    "failed": 0,
+    "total": 34,
+    "durationMs": 0,
+    "failures": []
+  },
+  "ui": {
+    "available": true,
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "failures": []
+  },
+  "screenshots": [
+    "cli-wavelength-400.png",
+    "lcd-editor-manual-mode.png",
+    "lcd-main-screen.png",
+    "shell-clickability.png"
+  ],
+  "visualBaselines": [
+    "device-status-wavelength-400-chromium-win32.png",
+    "instrument-panel-main-chromium-win32.png",
+    "lcd-editor-manual-mode-tile-chromium-win32.png",
+    "lcd-editor-row-1-uppercase-chromium-win32.png",
+    "lcd-main-screen-frame-chromium-win32.png"
+  ],
+  "visualGate": {
+    "enabled": true,
+    "baselineCount": 5
+  },
+  "summary": {
+    "totalFailures": 0,
+    "healthy": true
+  }
+}

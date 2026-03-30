@@ -7,6 +7,8 @@ export const LCD_SCALE = 10;
 
 export const WL_MIN = 190;
 export const WL_MAX = 1100;
+export const MULTIWAVE_COUNT_MIN = 2;
+export const MULTIWAVE_COUNT_MAX = 4;
 
 export const GAIN_MIN = 1;
 export const GAIN_MAX = 8;
@@ -50,12 +52,13 @@ export const CLI_COMMANDS = [
   "diag",
 ];
 
-export const MENU_MAIN = ["ФОТОМЕТРИЯ", "КОЛИЧ. АНАЛИЗ", "КИНЕТИКА", "НАСТРОЙКИ"];
+export const MENU_MAIN = ["ФОТОМЕТРИЯ", "КОЛИЧ. АНАЛИЗ", "КИНЕТИКА", "МНОГОВОЛН. АНАЛИЗ", "НАСТРОЙКИ"];
 export const MENU_PHOTOMETRY_VALUE = ["А", "%Т", "ЭНЕРГИЯ"];
-export const MENU_QUANT = ["НОВАЯ ГРАДУИР.", "КОЭФФИЦИЕНТ", "ЕДИНИЦЫ"];
+export const MENU_QUANT = ["НОВАЯ ГРАДУИР.", "КОЭФФИЦИЕНТ", "ЕДИНИЦЫ", "ДЛИНА КЮВЕТЫ, ММ"];
 export const MENU_KINETICS = ["ВЕЛИЧИНА", "ВЕРХ. ГРАНИЦА", "НИЖ. ГРАНИЦА", "ОБЩЕЕ ВРЕМЯ", "ПУСК"];
+export const MENU_MULTIWAVE = ["ЧИСЛО λ", "ДЛИНЫ ВОЛН", "ВЕЛИЧИНА", "ПУСК"];
 export const MENU_SETTINGS = ["Д2-ЛАМПА", "В-ЛАМПА", "ТЕМНОВОЙ ТОК", "КАЛИБР. ЛЯМ", "ВЕРСИЯ", "СБРОС"];
-export const FILE_GROUPS = ["ФОТОМЕТРИЯ", "ГРАДУИРОВКА", "КОЭФФИЦИЕНТ", "КИНЕТИКА"];
+export const FILE_GROUPS = ["ФОТОМЕТРИЯ", "ГРАДУИРОВКА", "КОЭФФИЦИЕНТ", "КИНЕТИКА", "МНОГОВОЛНОВЫЙ"];
 export const FILE_ACTIONS = ["ОТКРЫТЬ", "ПЕРЕИМЕНОВАТЬ", "УДАЛИТЬ", "ЭКСПОРТ"];
 export const UNITS = ["МКГ/Л", "МГ/Л", "Г/Л", "МЛ/Л", "МОЛЬ/Л", "МГ/КГ", "%", "ТСУ"];
 
@@ -72,6 +75,7 @@ export const FILE_EXTENSIONS = {
   ГРАДУИРОВКА: ".std",
   КОЭФФИЦИЕНТ: ".cof",
   КИНЕТИКА: ".kin",
+  МНОГОВОЛНОВЫЙ: ".mwl",
 };
 
 export const VALID_FILE_RE = /^[A-Za-zА-Яа-я0-9 _.-]+$/;

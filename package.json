@@ -10,6 +10,13 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
+    "test:unit:qa": "vitest --run --reporter=json --outputFile=qa-artifacts/unit/vitest-report.json",
+    "test:ui": "playwright test",
+    "test:ui:update-snapshots": "playwright test --update-snapshots",
+    "test:ui:headed": "playwright test --headed",
+    "test:ui:debug": "playwright test --debug",
+    "qa:report": "node scripts/generate-qa-report.mjs",
+    "qa:full": "npm run test:unit:qa && npm run test:ui && npm run qa:report",
     "lint": "eslint src/ --ext .js,.jsx",
     "lint:fix": "eslint src/ --ext .js,.jsx --fix",
     "typecheck": "tsc --noEmit",
@@ -32,6 +39,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.2.0",

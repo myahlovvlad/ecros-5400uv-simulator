@@ -9,26 +9,26 @@ const PANEL_DIGITS = [
 ];
 
 const SUBLABELS = {
-  "2": "АБВ",
-  "3": "ДЕЖ",
-  "4": "ЗИЙ",
-  "5": "КЛМ",
-  "6": "НОП",
-  "7": "РСТУ",
-  "8": "ФХЦЧ",
-  "9": "ШЩЫЯ",
+  "2": "ABC",
+  "3": "DEF",
+  "4": "GHI",
+  "5": "JKL",
+  "6": "MNO",
+  "7": "PQRS",
+  "8": "TUV",
+  "9": "WXYZ",
 };
 
 export function DevicePanel({ onAction }) {
   const getActionLabel = (rowIndex) => {
-    if (rowIndex === 0) return "ПЕРЕХОД Λ";
+    if (rowIndex === 0) return "ПЕРЕХОД λ";
     if (rowIndex === 1) return "НОЛЬ";
     if (rowIndex === 2) return "START";
     return "ВВОД";
   };
 
   const getAction = (rowIndex) => {
-    if (rowIndex === 0) return "GOTOλ";
+    if (rowIndex === 0) return "GOTOО»";
     if (rowIndex === 1) return "ZERO";
     if (rowIndex === 2) return "START/STOP";
     return "ENTER";

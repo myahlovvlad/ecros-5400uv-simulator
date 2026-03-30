@@ -10,7 +10,10 @@ import {
   referenceEnergyAt,
   seedFiles,
   validateFileName,
+  validateMultiwaveCount,
+  validateMultiwaveWavelength,
   validateNumeric,
+  validateQuantCuvetteLengthMm,
   validateWavelength,
 } from "../../src/domain/usecases/index.js";
 
@@ -101,12 +104,14 @@ describe("fileExtByGroup", () => {
     expect(fileExtByGroup("ГРАДУИРОВКА")).toBe(".std");
     expect(fileExtByGroup("КОЭФФИЦИЕНТ")).toBe(".cof");
     expect(fileExtByGroup("КИНЕТИКА")).toBe(".kin");
+    expect(fileExtByGroup("МНОГОВОЛНОВЫЙ")).toBe(".mwl");
   });
 });
 
 describe("seedFiles", () => {
-  it("returns four file groups", () => {
-    expect(Object.keys(seedFiles())).toHaveLength(4);
+  it("returns five file groups including multiwave", () => {
+    expect(Object.keys(seedFiles())).toHaveLength(5);
+    expect(seedFiles()).toHaveProperty("МНОГОВОЛНОВЫЙ");
   });
 });
 
@@ -127,6 +132,12 @@ describe("validation helpers", () => {
     expect(validateNumeric(15, 0, 10, "TEST").value).toBe(10);
     expect(validateNumeric("abc", 0, 10, "TEST").valid).toBe(false);
   });
+
+  it("validates multiwave and cuvette values", () => {
+    expect(validateMultiwaveCount(2).valid).toBe(true);
+    expect(validateMultiwaveWavelength(220).valid).toBe(true);
+    expect(validateQuantCuvetteLengthMm(10).valid).toBe(true);
+  });
 });
 
 describe("buildUsbExportPreview", () => {
@@ -146,5 +157,21 @@ describe("buildUsbExportPreview", () => {
 
     expect(preview).toContain("FILE=TEST.qua");
     expect(preview).toContain("index,wavelength_nm,energy,A,T_percent");
+  });
+
+  it("builds multiwave csv preview", () => {
+    const preview = buildUsbExportPreview({
+      group: "МНОГОВОЛНОВЫЙ",
+      name: "MW",
+      ext: ".mwl",
+      multiwaveResults: [
+        { index: 1, wavelength: 220, energy: 30124, a: 0.421, t: 37.9 },
+        { index: 2, wavelength: 260, energy: 28810, a: 0.5021, t: 31.45 },
+      ],
+    });
+
+    expect(preview).toContain("FILE=MW.mwl");
+    expect(preview).toContain("220.0");
+    expect(preview).toContain("260.0");
   });
 });

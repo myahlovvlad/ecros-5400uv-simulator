@@ -42,6 +42,7 @@ describe("DeviceService", () => {
     expect(service.getSaveContext({ screen: "quantCoef" }).ext).toBe(".cof");
     expect(service.getSaveContext({ screen: "kineticsRun" }).ext).toBe(".kin");
     expect(service.getSaveContext({ screen: "calibrationStep" }).ext).toBe(".std");
+    expect(service.getSaveContext({ screen: "multiwaveResults" }).ext).toBe(".mwl");
     expect(service.getSaveContext({ screen: "unknown" }).ext).toBe(".qua");
   });
 
@@ -49,5 +50,27 @@ describe("DeviceService", () => {
     expect(service.getSampleLabel("reference")).toContain("ЭТАЛОН");
     expect(service.getSampleLabel("sampleA")).toContain("ОБРАЗЕЦ");
     expect(service.getSampleLabel("unknown")).toBe("-");
+  });
+
+  it("opens saved multiwave files with embedded data", () => {
+    const prepared = {
+      ...initialState,
+      screen: "multiwaveResults",
+      previousScreen: "multiwaveResults",
+      multiwave: {
+        ...initialState.multiwave,
+        results: [
+          { index: 1, wavelength: 220, energy: 30124, a: 0.421, t: 37.9 },
+          { index: 2, wavelength: 260, energy: 28810, a: 0.5021, t: 31.45 },
+        ],
+      },
+    };
+
+    const saveResult = service.saveFile(prepared, "MW_SAVE");
+    const savedIndex = saveResult.newState.files["МНОГОВОЛНОВЫЙ"].findIndex((item) => item.name === "MW_SAVE");
+    const openResult = service.openFile(saveResult.newState, "МНОГОВОЛНОВЫЙ", savedIndex);
+    expect(openResult.error).toBeUndefined();
+    expect(openResult.newState.screen).toBe("multiwaveResults");
+    expect(openResult.newState.multiwave.results).toHaveLength(2);
   });
 });

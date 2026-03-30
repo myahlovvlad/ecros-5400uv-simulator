@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>QA Dashboard</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; background: #f5f7f5; color: #0f172a; }
+    h1, h2 { margin-bottom: 0.5rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .card { background: white; border: 1px solid #d4d4d8; border-radius: 16px; padding: 1rem; }
+    code { background: #eef2ff; padding: 0.125rem 0.375rem; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>QA Dashboard</h1>
+  <p>Generated: 2026-03-30T14:33:16.565Z</p>
+  <div class="grid">
+    <div class="card">
+      <h2>Unit</h2>
+      <p>34/34 passing</p>
+      <p>Failures: 0</p>
+    </div>
+    <div class="card">
+      <h2>UI</h2>
+      <p>3/3 passing</p>
+      <p>Failures: 0</p>
+    </div>
+    <div class="card">
+      <h2>Artifacts</h2>
+      <p>Screenshots: 4</p>
+      <p>Visual baselines: 5</p>
+      <p>Trace/video: see <code>test-results/playwright</code></p>
+    </div>
+  </div>
+  <h2>Screenshot artifacts</h2>
+  <ul><li><a href="qa-artifacts/ui/screenshots/cli-wavelength-400.png">cli-wavelength-400.png</a></li><li><a href="qa-artifacts/ui/screenshots/lcd-editor-manual-mode.png">lcd-editor-manual-mode.png</a></li><li><a href="qa-artifacts/ui/screenshots/lcd-main-screen.png">lcd-main-screen.png</a></li><li><a href="qa-artifacts/ui/screenshots/shell-clickability.png">shell-clickability.png</a></li></ul>
+  <h2>Pixel-diff baselines</h2>
+  <ul><li>device-status-wavelength-400-chromium-win32.png</li><li>instrument-panel-main-chromium-win32.png</li><li>lcd-editor-manual-mode-tile-chromium-win32.png</li><li>lcd-editor-row-1-uppercase-chromium-win32.png</li><li>lcd-main-screen-frame-chromium-win32.png</li></ul>
+</body>
+</html>

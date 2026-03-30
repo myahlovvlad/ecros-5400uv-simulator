@@ -1,0 +1,5 @@
+QA debug summary
+Generated: 2026-03-30T14:33:16.565Z
+
+No failing tests were detected in the latest QA cycle.
+Recommended next step: inspect generated screenshots and keep extending smoke coverage.

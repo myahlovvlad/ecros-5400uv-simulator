@@ -5,19 +5,19 @@ export function MeasurementTable({ measurements, cursor, screen }) {
 
   return (
     <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Последние результаты</h2>
         <div className="text-sm text-zinc-500">Вниз после последней строки открывает график на LCD</div>
       </div>
-      <div className="overflow-hidden rounded-2xl border border-zinc-200">
+      <div className="overflow-x-auto rounded-2xl border border-zinc-200">
         <table className="min-w-full text-sm">
           <thead className="bg-zinc-50">
             <tr>
               <th className="px-3 py-2 text-left">№</th>
               <th className="px-3 py-2 text-left">λ, нм</th>
               <th className="px-3 py-2 text-left">Энергия</th>
-              <th className="px-3 py-2 text-left">А</th>
-              <th className="px-3 py-2 text-left">%Т</th>
+              <th className="px-3 py-2 text-left">A</th>
+              <th className="px-3 py-2 text-left">%T</th>
             </tr>
           </thead>
           <tbody>
