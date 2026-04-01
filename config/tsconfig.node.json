@@ -8,5 +8,5 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true
   },
-  "include": ["vite.config.js", "vitest.config.js"]
+  "include": ["./vite.config.js", "./vitest.config.js", "./playwright.config.js"]
 }

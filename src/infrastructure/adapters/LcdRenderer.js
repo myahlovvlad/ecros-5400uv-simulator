@@ -26,12 +26,53 @@ const GLYPH_H = 8;
 const SPACE_W = 5;
 const MONO_ADVANCE_W = 6;
 const TITLE_UNDERLINE_OFFSET = GLYPH_H + 1;
-const GLYPH_CACHE = new Map();
 const GLYPH_METRICS_CACHE = new Map();
 const COMPOSED_GLYPH_CACHE = new Map();
-const HEX_COLOR_RE = /^#([0-9a-f]{6})$/i;
 const COMBINING_MARK_RE = /^\p{M}$/u;
 const LETTER_BASE_RE = /^[\p{Script=Latin}\p{Script=Cyrillic}]$/u;
+
+const DIAGNOSTIC_STATUS_BITMAPS = {
+  pending: rowsFromStrings([
+    ".#####.",
+    ".#...#.",
+    ".#...#.",
+    ".#...#.",
+    ".#...#.",
+    ".#...#.",
+    ".#####.",
+    ".......",
+  ]),
+  running: rowsFromStrings([
+    ".#####.",
+    ".#...#.",
+    ".#...#.",
+    ".#.###.",
+    ".#.###.",
+    ".#...#.",
+    ".#####.",
+    ".......",
+  ]),
+  success: rowsFromStrings([
+    ".#####.",
+    ".#...#.",
+    ".#..##.",
+    ".#.##..",
+    ".###.#.",
+    ".#...#.",
+    ".#####.",
+    ".......",
+  ]),
+  error: rowsFromStrings([
+    ".#####.",
+    ".#...#.",
+    ".##.##.",
+    ".#.##..",
+    ".#.##..",
+    ".##.##.",
+    ".#####.",
+    ".......",
+  ]),
+};
 
 function rowsFromStrings(strings) {
   return strings.map((row) =>
@@ -61,7 +102,7 @@ const DOTLESS_I_GLYPH = rowsFromStrings(padGlyphRowsToHeight([
   "###",
 ], { alignBottom: true }));
 
-const FORCED_COMPOSED_GLYPHS = new Set(["Ё", "Й", "ё", "й", "Д", "д", "к", "λ", "Λ"]);
+const FORCED_COMPOSED_GLYPHS = new Set(["Ё", "Й", "ё", "й", "Д", "д", "к", "ц", "щ", "b", "d", "g", "h", "j", "k", "l", "p", "q", "y", "λ", "Λ"]);
 const EXPLICIT_GLYPH_OVERRIDES = {
   Ё: rowsFromStrings([
     ".#.#.",
@@ -107,11 +148,131 @@ const EXPLICIT_GLYPH_OVERRIDES = {
     "....",
     "....",
     "#..#",
+    "#..#",
     "#.#.",
     "##..",
     "#.#.",
     "#..#",
+  ]),
+  ц: rowsFromStrings([
+    ".....",
+    ".....",
+    "#..#.",
+    "#..#.",
+    "#..#.",
+    "#..#.",
+    "#####",
+    "....#",
+  ]),
+  щ: rowsFromStrings([
+    ".......",
+    ".......",
+    "#..#..#",
+    "#..#..#",
+    "#..#..#",
+    "#..#..#",
+    "#######",
+    "......#",
+  ]),
+  b: rowsFromStrings([
+    "....",
+    "....",
+    "#...",
+    "#...",
+    "####",
     "#..#",
+    "#..#",
+    "####",
+  ]),
+  d: rowsFromStrings([
+    "....",
+    "....",
+    "...#",
+    "...#",
+    ".###",
+    "#..#",
+    "#..#",
+    ".###",
+  ]),
+  g: rowsFromStrings([
+    "....",
+    "....",
+    ".###",
+    "#..#",
+    "#..#",
+    ".###",
+    "...#",
+    "###.",
+  ]),
+  h: rowsFromStrings([
+    "....",
+    "....",
+    "#...",
+    "#...",
+    "###.",
+    "#..#",
+    "#..#",
+    "#..#",
+  ]),
+  j: rowsFromStrings([
+    "..",
+    "..",
+    ".#",
+    ".#",
+    ".#",
+    ".#",
+    "#.",
+    "#.",
+  ]),
+  k: rowsFromStrings([
+    "....",
+    "....",
+    "#...",
+    "#...",
+    "#..#",
+    "###.",
+    "#..#",
+    "#..#",
+  ]),
+  l: rowsFromStrings([
+    "..",
+    "..",
+    "#.",
+    "#.",
+    "#.",
+    "#.",
+    "#.",
+    "##",
+  ]),
+  p: rowsFromStrings([
+    "....",
+    "....",
+    "####",
+    "#..#",
+    "####",
+    "#...",
+    "#...",
+    "#...",
+  ]),
+  q: rowsFromStrings([
+    "....",
+    "....",
+    ".###",
+    "#..#",
+    ".###",
+    "...#",
+    "...#",
+    "...#",
+  ]),
+  y: rowsFromStrings([
+    "....",
+    "....",
+    "#..#",
+    "#..#",
+    ".###",
+    "...#",
+    "...#",
+    "###.",
   ]),
   λ: rowsFromStrings([
     "..#..",
@@ -172,7 +333,10 @@ function extractVariant2LowercaseGlyphs(markdown) {
       .filter(Boolean);
 
     if (!rows.length) continue;
-    glyphs[char] = rowsFromStrings(padGlyphRowsToHeight(rows, { alignBottom: true }));
+    const trimmedRows = [...rows];
+    while (trimmedRows.length && !trimmedRows[0].includes("#")) trimmedRows.shift();
+    while (trimmedRows.length && !trimmedRows[trimmedRows.length - 1].includes("#")) trimmedRows.pop();
+    glyphs[char] = rowsFromStrings(padGlyphRowsToHeight(trimmedRows.length ? trimmedRows : rows, { alignBottom: true }));
   }
 
   return glyphs;
@@ -275,6 +439,8 @@ export const FONT_BITMAP = (() => {
   const cyrillicUpper = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
   const cyrillicLower = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
 
+  void cyrillicUpper;
+  void cyrillicLower;
   Object.assign(map, extractVariant2LowercaseGlyphs(glyphSpecificationRaw));
   return map;
 })();
@@ -283,7 +449,31 @@ function normalizeBitmapChar(char) {
   return String(char ?? "").normalize("NFC");
 }
 
-function splitBitmapText(text) {
+function getDiagnosticStatusBitmap(status) {
+  return DIAGNOSTIC_STATUS_BITMAPS[status] ?? DIAGNOSTIC_STATUS_BITMAPS.pending;
+}
+
+export function normalizeGlyphMatrix(matrix, fallbackWidth = null) {
+  const sourceRows = Array.isArray(matrix) ? matrix : [];
+  const width = Math.max(
+    fallbackWidth ?? 0,
+    1,
+    ...sourceRows.map((row) => (Array.isArray(row) ? row.length : 0)),
+  );
+
+  return Array.from({ length: GLYPH_H }, (_, rowIndex) => {
+    const sourceRow = Array.isArray(sourceRows[rowIndex]) ? sourceRows[rowIndex] : [];
+    return Array.from({ length: width }, (_, colIndex) => (sourceRow[colIndex] ? 1 : 0));
+  });
+}
+
+function normalizeGlyphOverrides(glyphOverrides = {}) {
+  return Object.fromEntries(
+    Object.entries(glyphOverrides ?? {}).map(([char, matrix]) => [normalizeBitmapChar(char), normalizeGlyphMatrix(matrix)]),
+  );
+}
+
+export function splitBitmapText(text) {
   const glyphs = [];
   let current = "";
 
@@ -363,6 +553,14 @@ function getGlyphBaseBitmap(char) {
   if (char === "ı") return DOTLESS_I_GLYPH;
   return FONT_BITMAP[normalizeBitmapChar(char)] || null;
 }
+void getGlyphBaseBitmap;
+
+function resolveGlyphBaseBitmap(char, glyphOverrides = null) {
+  const normalizedChar = normalizeBitmapChar(char);
+  if (glyphOverrides?.[normalizedChar]) return glyphOverrides[normalizedChar];
+  if (normalizedChar === "ı") return DOTLESS_I_GLYPH;
+  return FONT_BITMAP[normalizedChar] || null;
+}
 
 function buildCombiningMark(mark, glyph) {
   const width = glyph[0]?.length ?? 1;
@@ -435,11 +633,13 @@ function applyCombiningMark(glyph, mark) {
   return nextGlyph;
 }
 
-function getComposedGlyphBitmap(char) {
+function getComposedGlyphBitmap(char, glyphOverrides = null) {
   const key = normalizeBitmapChar(char);
-  if (COMPOSED_GLYPH_CACHE.has(key)) return COMPOSED_GLYPH_CACHE.get(key);
+  const hasUserOverrides = glyphOverrides && Object.keys(glyphOverrides).length > 0;
+  const cacheKey = hasUserOverrides ? null : key;
+  if (cacheKey && COMPOSED_GLYPH_CACHE.has(cacheKey)) return COMPOSED_GLYPH_CACHE.get(cacheKey);
 
-  if (EXPLICIT_GLYPH_OVERRIDES[key]) {
+  if (!hasUserOverrides && EXPLICIT_GLYPH_OVERRIDES[key]) {
     COMPOSED_GLYPH_CACHE.set(key, EXPLICIT_GLYPH_OVERRIDES[key]);
     return EXPLICIT_GLYPH_OVERRIDES[key];
   }
@@ -454,7 +654,7 @@ function getComposedGlyphBitmap(char) {
     baseChar = "ı";
   }
 
-  const baseGlyph = getGlyphBaseBitmap(baseChar);
+  const baseGlyph = resolveGlyphBaseBitmap(baseChar, glyphOverrides);
   if (!baseGlyph) return null;
 
   let glyph = cloneGlyph(baseGlyph);
@@ -463,7 +663,7 @@ function getComposedGlyphBitmap(char) {
     if (!glyph) return null;
   }
 
-  COMPOSED_GLYPH_CACHE.set(key, glyph);
+  if (cacheKey) COMPOSED_GLYPH_CACHE.set(cacheKey, glyph);
   return glyph;
 }
 
@@ -474,51 +674,15 @@ function isMonospaceBitmapGlyph(char, glyphWidth) {
   return /^[0-9]$/u.test(baseChar) || LETTER_BASE_RE.test(baseChar);
 }
 
-function getGlyphBitmap(char) {
+function getGlyphBitmap(char, glyphOverrides = null) {
   const key = normalizeBitmapChar(char);
-  if (FORCED_COMPOSED_GLYPHS.has(key)) return getComposedGlyphBitmap(key) || UNKNOWN_GLYPH;
-  return getGlyphBaseBitmap(key) || getComposedGlyphBitmap(key) || UNKNOWN_GLYPH;
+  if (glyphOverrides?.[key]) return glyphOverrides[key];
+  if (FORCED_COMPOSED_GLYPHS.has(key)) return getComposedGlyphBitmap(key, glyphOverrides) || UNKNOWN_GLYPH;
+  return resolveGlyphBaseBitmap(key, glyphOverrides) || getComposedGlyphBitmap(key, glyphOverrides) || UNKNOWN_GLYPH;
 }
 
-function parseHexColor(hex) {
-  const match = HEX_COLOR_RE.exec(hex);
-  if (!match) return [0, 0, 0];
-  const value = parseInt(match[1], 16);
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
-}
-
-function getGlyphImageData(char, inverted = false) {
-  const glyphKey = `${normalizeBitmapChar(char)}:${inverted ? 1 : 0}`;
-  if (GLYPH_CACHE.has(glyphKey)) return GLYPH_CACHE.get(glyphKey);
-
-  const glyph = getGlyphBitmap(char);
-  const width = glyph[0]?.length ?? 5;
-  const pixels = new Uint8ClampedArray(width * GLYPH_H * 4);
-  const [r, g, b] = parseHexColor(inverted ? LCD_BG : LCD_FG);
-
-  glyph.forEach((row, rowIndex) => {
-    row.forEach((value, colIndex) => {
-      if (!value) return;
-      const pixelIndex = (rowIndex * width + colIndex) * 4;
-      pixels[pixelIndex] = r;
-      pixels[pixelIndex + 1] = g;
-      pixels[pixelIndex + 2] = b;
-      pixels[pixelIndex + 3] = 255;
-    });
-  });
-
-  const imageData = new ImageData(pixels, width, GLYPH_H);
-  GLYPH_CACHE.set(glyphKey, imageData);
-  return imageData;
-}
-
-function drawBitmapGlyphSlice(ctx, glyph, x, y, startCol, endCol, inverted = false) {
-  ctx.fillStyle = inverted ? LCD_BG : LCD_FG;
-  glyph.forEach((row, rowIndex) => {
-    for (let colIndex = startCol; colIndex <= endCol; colIndex += 1) {
-      if (row[colIndex]) ctx.fillRect(x + colIndex - startCol, y + rowIndex, 1, 1);
-    }
-  });
+export function getBitmapGlyphMatrix(char, { glyphOverrides = null } = {}) {
+  return cloneGlyph(getGlyphBitmap(char, normalizeGlyphOverrides(glyphOverrides)));
 }
 
 function getGlyphVisibleBounds(glyph) {
@@ -549,11 +713,12 @@ function getGlyphVisibleBounds(glyph) {
   };
 }
 
-function getGlyphMetrics(char) {
+function getGlyphMetrics(char, glyphOverrides = null) {
   const key = normalizeBitmapChar(char);
-  if (GLYPH_METRICS_CACHE.has(key)) return GLYPH_METRICS_CACHE.get(key);
+  const useCache = !glyphOverrides || !Object.keys(glyphOverrides).length;
+  if (useCache && GLYPH_METRICS_CACHE.has(key)) return GLYPH_METRICS_CACHE.get(key);
 
-  const glyph = getGlyphBitmap(char);
+  const glyph = getGlyphBitmap(char, glyphOverrides);
   const bounds = getGlyphVisibleBounds(glyph);
   const visibleWidth = char === " " ? 0 : Math.max(1, bounds.width || (glyph[0]?.length ?? 5));
   const advance = char === " "
@@ -569,17 +734,17 @@ function getGlyphMetrics(char) {
     visibleWidth,
   };
 
-  GLYPH_METRICS_CACHE.set(key, metrics);
+  if (useCache) GLYPH_METRICS_CACHE.set(key, metrics);
   return metrics;
 }
 
-function forEachBitmapGlyph(text, { startX = 0, maxX = Number.POSITIVE_INFINITY } = {}, visitor) {
+function forEachBitmapGlyph(text, { startX = 0, maxX = Number.POSITIVE_INFINITY, glyphOverrides = null } = {}, visitor) {
   const chars = splitBitmapText(text);
   let cursorX = startX;
 
   for (let index = 0; index < chars.length; index += 1) {
     const char = chars[index];
-    const metrics = getGlyphMetrics(char);
+    const metrics = getGlyphMetrics(char, glyphOverrides);
     const extraSpace = Math.max(0, metrics.advance - metrics.visibleWidth);
     const leftPadding = char === " " || index === 0 ? 0 : Math.floor(extraSpace / 2);
     const drawX = cursorX + leftPadding;
@@ -599,25 +764,27 @@ function forEachBitmapGlyph(text, { startX = 0, maxX = Number.POSITIVE_INFINITY 
   }
 }
 
-function measureBitmapTextWidth(text) {
+function measureBitmapTextWidth(text, glyphOverrides = null) {
   let width = 0;
 
-  forEachBitmapGlyph(text, {}, ({ drawWidth, drawX }) => {
+  forEachBitmapGlyph(text, { glyphOverrides }, ({ drawWidth, drawX }) => {
     width = Math.max(width, drawX + drawWidth);
   });
 
   return width;
 }
 
-export function getUnmappedGlyphs(text) {
+export function getUnmappedGlyphs(text, { glyphOverrides = null } = {}) {
+  const normalizedOverrides = normalizeGlyphOverrides(glyphOverrides);
   return splitBitmapText(text).flatMap((char) => {
     if (char === " ") return [];
-    if (getGlyphBaseBitmap(char) || getComposedGlyphBitmap(char)) return [];
+    if (resolveGlyphBaseBitmap(char, normalizedOverrides) || getComposedGlyphBitmap(char, normalizedOverrides)) return [];
     return [{ char, codepoint: `U+${char.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}` }];
   });
 }
 
-export function getRenderableRows(rows) {
+export function getRenderableRows(rows, { glyphOverrides = null } = {}) {
+  const normalizedOverrides = normalizeGlyphOverrides(glyphOverrides);
   const trimmedRows = [...(rows ?? [])];
   while (trimmedRows.length && !String(trimmedRows[trimmedRows.length - 1]?.text ?? "").trim()) trimmedRows.pop();
 
@@ -628,44 +795,150 @@ export function getRenderableRows(rows) {
     const text = String(row?.text ?? "").trimEnd();
     const x = Number.isFinite(row?.x) ? row.x : LCD_MARGIN;
     const y = Number.isFinite(row?.y) ? row.y : LCD_MARGIN + index * rowStep;
-    const width = Math.max(1, measureBitmapTextWidth(text));
+    const textWidth = Math.max(1, measureBitmapTextWidth(text, normalizedOverrides));
+    const statusIndicator = row?.statusIndicator ?? null;
+    const statusBitmap = statusIndicator ? getDiagnosticStatusBitmap(statusIndicator) : null;
+    const statusWidth = statusBitmap?.[0]?.length ?? 0;
+    const statusX = statusBitmap ? LCD_W - LCD_MARGIN - statusWidth : null;
+    const width = statusBitmap
+      ? Math.max(1, statusX + statusWidth - x)
+      : textWidth;
 
     return {
       ...row,
       text,
       x,
       y,
+      textWidth,
+      statusBitmap,
+      statusIndicator,
+      statusX,
       width,
       height: GLYPH_H,
-      unmappedGlyphs: getUnmappedGlyphs(text),
+      unmappedGlyphs: getUnmappedGlyphs(text, { glyphOverrides: normalizedOverrides }),
     };
   });
 }
 
-function drawBitmapText(ctx, text, x, y, inverted = false) {
-  forEachBitmapGlyph(text, { startX: x, maxX: LCD_W - LCD_MARGIN }, ({ char, drawX, glyph, visibleEnd, visibleStart }) => {
-    if (char === " ") return;
-    drawBitmapGlyphSlice(ctx, glyph, drawX, y, visibleStart, visibleEnd, inverted);
+function drawBitmapMatrixSlice(ctx, glyph, x, y, startCol, endCol, inverted = false) {
+  ctx.fillStyle = inverted ? LCD_BG : LCD_FG;
+  glyph.forEach((row, rowIndex) => {
+    for (let colIndex = startCol; colIndex <= endCol; colIndex += 1) {
+      if (row[colIndex]) ctx.fillRect(x + colIndex - startCol, y + rowIndex, 1, 1);
+    }
   });
 }
 
-function drawBitmapPreview(ctx, text, { width = LCD_W, height = GLYPH_H + 4, invalidChars = [] } = {}) {
+function drawBitmapText(ctx, text, x, y, { inverted = false, glyphOverrides = null } = {}) {
+  forEachBitmapGlyph(text, { startX: x, maxX: LCD_W - LCD_MARGIN, glyphOverrides }, ({ char, drawX, glyph, visibleEnd, visibleStart }) => {
+    if (char === " ") return;
+    drawBitmapMatrixSlice(ctx, glyph, drawX, y, visibleStart, visibleEnd, inverted);
+  });
+}
+
+function drawBitmapPreview(ctx, text, { width = LCD_W, height = GLYPH_H + 4, invalidChars = [], glyphOverrides = null } = {}) {
   const invalidSet = new Set((invalidChars ?? []).map((item) => item.char));
   const cursorY = 2;
+  const normalizedOverrides = normalizeGlyphOverrides(glyphOverrides);
 
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  forEachBitmapGlyph(text, { startX: 2, maxX: width - 2 }, ({ char, drawWidth, drawX, glyph, visibleEnd, visibleStart }) => {
+  forEachBitmapGlyph(text, { startX: 2, maxX: width - 2, glyphOverrides: normalizedOverrides }, ({ char, drawWidth, drawX, glyph, visibleEnd, visibleStart }) => {
     if (invalidSet.has(char)) {
       ctx.fillStyle = "#fde68a";
       ctx.fillRect(drawX - 1, cursorY - 1, drawWidth + 2, GLYPH_H + 2);
     }
 
     if (char === " ") return;
-    drawBitmapGlyphSlice(ctx, glyph, drawX, cursorY, visibleStart, visibleEnd, false);
+    drawBitmapMatrixSlice(ctx, glyph, drawX, cursorY, visibleStart, visibleEnd, false);
   });
+}
+
+function createBitmapMatrix(width = LCD_W, height = LCD_H) {
+  return Array.from({ length: height }, () => Array.from({ length: width }, () => 0));
+}
+
+function writeBitmapRect(matrix, x, y, width, height, value = 1) {
+  for (let rowIndex = 0; rowIndex < height; rowIndex += 1) {
+    const targetY = y + rowIndex;
+    if (targetY < 0 || targetY >= matrix.length) continue;
+
+    for (let colIndex = 0; colIndex < width; colIndex += 1) {
+      const targetX = x + colIndex;
+      if (targetX < 0 || targetX >= matrix[0].length) continue;
+      matrix[targetY][targetX] = value;
+    }
+  }
+}
+
+function strokeBitmapRect(matrix, x, y, width, height, value = 1) {
+  writeBitmapRect(matrix, x, y, width, 1, value);
+  writeBitmapRect(matrix, x, y + height - 1, width, 1, value);
+  writeBitmapRect(matrix, x, y, 1, height, value);
+  writeBitmapRect(matrix, x + width - 1, y, 1, height, value);
+}
+
+function drawBitmapMatrix(matrix, glyph, x, y, { value = 1 } = {}) {
+  glyph.forEach((row, rowIndex) => {
+    const targetY = y + rowIndex;
+    if (targetY < 0 || targetY >= matrix.length) return;
+    row.forEach((pixel, colIndex) => {
+      const targetX = x + colIndex;
+      if (!pixel || targetX < 0 || targetX >= matrix[0].length) return;
+      matrix[targetY][targetX] = value;
+    });
+  });
+}
+
+function drawBitmapTextToMatrix(matrix, text, x, y, { inverted = false, glyphOverrides = null } = {}) {
+  forEachBitmapGlyph(text, { startX: x, maxX: LCD_W - LCD_MARGIN, glyphOverrides }, ({ char, drawX, glyph, visibleEnd, visibleStart }) => {
+    if (char === " ") return;
+    drawBitmapMatrix(matrix, glyph.map((row) => row.slice(visibleStart, visibleEnd + 1)), drawX, y, { value: inverted ? 0 : 1 });
+  });
+}
+
+function renderRowsToBitmap(rows, { titleUnderline = false, glyphOverrides = null } = {}) {
+  const normalizedOverrides = normalizeGlyphOverrides(glyphOverrides);
+  const renderableRows = getRenderableRows(rows, { glyphOverrides: normalizedOverrides });
+  const matrix = createBitmapMatrix();
+
+  renderableRows.forEach((row, rowIndex) => {
+    if (row.y + GLYPH_H > LCD_H - LCD_MARGIN) return;
+    const inverted = titleUnderline && rowIndex === 0 ? false : Boolean(row.inverted);
+    if (inverted) {
+      writeBitmapRect(matrix, row.x, row.y, Math.min(LCD_W - row.x - LCD_MARGIN, row.width), GLYPH_H, 1);
+    }
+
+    drawBitmapTextToMatrix(matrix, row.text, row.x, row.y, { inverted, glyphOverrides: normalizedOverrides });
+
+    if (row.statusBitmap) {
+      drawBitmapMatrix(matrix, row.statusBitmap, row.statusX, row.y, { value: inverted ? 0 : 1 });
+    }
+  });
+
+  if (titleUnderline && renderableRows[0]) {
+    const underlineY = Math.min(LCD_H - 1, renderableRows[0].y + TITLE_UNDERLINE_OFFSET);
+    writeBitmapRect(matrix, 0, underlineY, LCD_W, 1, 1);
+  }
+
+  strokeBitmapRect(matrix, 0, 0, LCD_W, LCD_H, 1);
+  return { matrix, renderableRows };
+}
+
+function bitmapMatrixToBytes(matrix) {
+  const bytes = [];
+  for (let page = 0; page < LCD_H / 8; page += 1) {
+    for (let x = 0; x < LCD_W; x += 1) {
+      let value = 0;
+      for (let bit = 0; bit < 8; bit += 1) {
+        if (matrix[page * 8 + bit][x]) value |= (1 << bit);
+      }
+      bytes.push(value);
+    }
+  }
+  return bytes;
 }
 
 /**
@@ -680,12 +953,13 @@ export const LCDRenderer = {
    * Render LCD text rows to a bitmap canvas.
    *
    * @param {CanvasRenderingContext2D} ctx
-   * @param {Array<{text?: string, inverted?: boolean, x?: number, y?: number}>} rows
-   * @param {{ editorEnabled?: boolean, selectedRowIndex?: number|null, titleUnderline?: boolean }} [options]
+   * @param {Array<{text?: string, inverted?: boolean, x?: number, y?: number, statusIndicator?: string|null}>} rows
+   * @param {{ editorEnabled?: boolean, selectedRowIndex?: number|null, titleUnderline?: boolean, glyphOverrides?: Record<string, number[][]> }} [options]
    * @returns {Array<{text: string, inverted?: boolean, x: number, y: number, width: number, height: number, unmappedGlyphs: Array<{char: string, codepoint: string}>}>}
    */
-  render(ctx, rows, { editorEnabled = false, selectedRowIndex = null, titleUnderline = false } = {}) {
-    const renderableRows = getRenderableRows(rows);
+  render(ctx, rows, { editorEnabled = false, selectedRowIndex = null, titleUnderline = false, glyphOverrides = null } = {}) {
+    const normalizedOverrides = normalizeGlyphOverrides(glyphOverrides);
+    const renderableRows = getRenderableRows(rows, { glyphOverrides: normalizedOverrides });
 
     ctx.fillStyle = LCD_BG;
     ctx.fillRect(0, 0, LCD_W, LCD_H);
@@ -697,12 +971,15 @@ export const LCDRenderer = {
         ctx.fillStyle = LCD_FG;
         ctx.fillRect(row.x, row.y, Math.min(LCD_W - row.x - LCD_MARGIN, row.width), GLYPH_H);
       }
-      drawBitmapText(ctx, row.text, row.x, row.y, inverted);
+      drawBitmapText(ctx, row.text, row.x, row.y, { inverted, glyphOverrides: normalizedOverrides });
+      if (row.statusBitmap) {
+        drawBitmapMatrixSlice(ctx, row.statusBitmap, row.statusX, row.y, 0, row.statusBitmap[0].length - 1, inverted);
+      }
 
       if (editorEnabled && selectedRowIndex === rowIndex) {
         ctx.strokeStyle = "#dc2626";
         ctx.lineWidth = 1;
-        ctx.strokeRect(row.x - 1.5, row.y - 1.5, Math.max(4, row.width + 3), GLYPH_H + 3);
+        ctx.strokeRect(row.x - 2.5, row.y - 2.5, Math.max(6, row.width + 5), GLYPH_H + 5);
       }
     });
 
@@ -734,6 +1011,68 @@ export function serializeBitmapFontDefinition() {
     null,
     2,
   );
+}
+
+function escapeCString(value) {
+  return String(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n");
+}
+
+function rowToByte(row) {
+  return row.reduce((acc, value, index) => (value ? acc | (1 << (row.length - index - 1)) : acc), 0);
+}
+
+function formatByteList(bytes, lineWidth = 16) {
+  const lines = [];
+  for (let index = 0; index < bytes.length; index += lineWidth) {
+    lines.push(`  ${bytes.slice(index, index + lineWidth).map((value) => `0x${value.toString(16).toUpperCase().padStart(2, "0")}`).join(", ")}`);
+  }
+  return lines.join(",\n");
+}
+
+export function serializeBitmapFontCDefinition(glyphOverrides = {}) {
+  const normalizedOverrides = normalizeGlyphOverrides(glyphOverrides);
+  const glyphEntries = Object.entries({ ...FONT_BITMAP, ...normalizedOverrides })
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([char, glyph]) => ({ char, glyph: normalizeGlyphMatrix(glyph) }));
+
+  const lines = [
+    "typedef struct {",
+    "  const char *symbol;",
+    "  uint8_t width;",
+    "  uint8_t rows[8];",
+    "} lcd_glyph_t;",
+    "",
+    "static const lcd_glyph_t kLcdGlyphs[] = {",
+  ];
+
+  glyphEntries.forEach(({ char, glyph }) => {
+    lines.push(
+      `  { "${escapeCString(char)}", ${glyph[0].length}, { ${glyph.map((row) => `0x${rowToByte(row).toString(16).toUpperCase().padStart(2, "0")}`).join(", ")} } },`,
+    );
+  });
+
+  Object.entries(DIAGNOSTIC_STATUS_BITMAPS).forEach(([status, glyph]) => {
+    lines.push(
+      `  { "__status_${status}", ${glyph[0].length}, { ${glyph.map((row) => `0x${rowToByte(row).toString(16).toUpperCase().padStart(2, "0")}`).join(", ")} } },`,
+    );
+  });
+
+  lines.push("};");
+  return lines.join("\n");
+}
+
+export function serializeScreenBufferCDefinition(rows, { titleUnderline = false, glyphOverrides = null, variableName = "kLcdScreen" } = {}) {
+  const { matrix } = renderRowsToBitmap(rows, { titleUnderline, glyphOverrides });
+  const bytes = bitmapMatrixToBytes(matrix);
+
+  return [
+    `static const uint8_t ${variableName}[${bytes.length}] = {`,
+    `${formatByteList(bytes)}`,
+    "};",
+  ].join("\n");
 }
 
 function getSampleLabel(device) {
@@ -776,6 +1115,17 @@ export function getLcdRows(device) {
     push(center("ИДЕТ ОПЕРАЦИЯ"));
     push("");
     return rows;
+  }
+
+  if (device.screen === "diagnostic" && Array.isArray(device.diagnosticSteps) && device.diagnosticSteps.length) {
+    push("Диагностика", true);
+    device.diagnosticSteps.forEach((step) => {
+      rows.push({
+        text: pad(step.label),
+        statusIndicator: step.status,
+      });
+    });
+    return withPauseBanner(rows, device.emulatorPaused);
   }
 
   if (device.screen === "boot") {

@@ -185,6 +185,7 @@ function LcdHousing({
   onMoveLcdRow,
   onCanvasReady,
   titleUnderline,
+  glyphOverrides,
 }) {
   return (
     <div className="mx-auto w-full max-w-[32rem] rounded-[24px] border-[2px] border-emerald-200/80 px-[4.5%] py-[3.5%] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]">
@@ -199,6 +200,7 @@ function LcdHousing({
           onMoveRow={onMoveLcdRow}
           onCanvasReady={onCanvasReady}
           titleUnderline={titleUnderline}
+          glyphOverrides={glyphOverrides}
         />
       </div>
     </div>
@@ -218,6 +220,7 @@ export function InstrumentPanel({
   onMoveLcdRow,
   onCanvasReady,
   titleUnderline = false,
+  glyphOverrides = null,
 }) {
   return (
     <div data-testid="instrument-panel" className="mx-auto w-full max-w-[980px]">
@@ -240,6 +243,7 @@ export function InstrumentPanel({
                 onMoveLcdRow={onMoveLcdRow}
                 onCanvasReady={onCanvasReady}
                 titleUnderline={titleUnderline}
+                glyphOverrides={glyphOverrides}
               />
 
               <div className="mx-auto w-full max-w-[48rem] space-y-4">

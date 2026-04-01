@@ -64,6 +64,7 @@ export function LcdCanvas({
   editorEnabled = false,
   selectedRowIndex = null,
   titleUnderline = false,
+  glyphOverrides = null,
   onSelectRow,
   onMoveRow,
   onCanvasReady,
@@ -71,7 +72,7 @@ export function LcdCanvas({
   const ref = useRef(null);
   const dragStateRef = useRef(null);
   const rows = useMemo(() => rowsOverride ?? getLcdRows(device), [device, rowsOverride]);
-  const renderableRows = useMemo(() => getRenderableRows(rows), [rows]);
+  const renderableRows = useMemo(() => getRenderableRows(rows, { glyphOverrides }), [glyphOverrides, rows]);
 
   useEffect(() => {
     const canvas = ref.current;
@@ -121,11 +122,11 @@ export function LcdCanvas({
         return;
       }
 
-      LCDRenderer.render(ctx, rows, { editorEnabled, selectedRowIndex, titleUnderline });
+      LCDRenderer.render(ctx, rows, { editorEnabled, selectedRowIndex, titleUnderline, glyphOverrides });
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [device, editorEnabled, rows, rowsOverride, selectedRowIndex, titleUnderline]);
+  }, [device, editorEnabled, glyphOverrides, rows, rowsOverride, selectedRowIndex, titleUnderline]);
 
   const getCanvasPoint = (event) => {
     const canvas = ref.current;

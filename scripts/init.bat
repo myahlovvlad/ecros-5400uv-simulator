@@ -2,7 +2,7 @@
 setlocal
 chcp 65001 >nul
 
-set "ROOT_DIR=%~dp0"
+for %%I in ("%~dp0..") do set "ROOT_DIR=%%~fI"
 set "APP_URL=http://127.0.0.1:3000"
 
 pushd "%ROOT_DIR%" >nul 2>&1
@@ -19,7 +19,7 @@ echo.
 
 if not exist package.json (
     echo [ERROR] package.json not found in %CD%
-    echo Make sure init.bat is launched from the simulator repository.
+    echo Make sure scripts\init.bat is launched from the simulator repository.
     pause
     popd >nul
     exit /b 1

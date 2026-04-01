@@ -30,6 +30,6 @@
       "@presentation/*": ["src/presentation/*"]
     }
   },
-  "include": ["src", "main.jsx"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src"],
+  "references": [{ "path": "./config/tsconfig.node.json" }]
 }

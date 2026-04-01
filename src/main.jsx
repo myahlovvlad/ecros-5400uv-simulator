@@ -5,8 +5,8 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './src/styles.css';
-import { Ecros5400UvSimulator } from './src/index.js';
+import './styles.css';
+import { Ecros5400UvSimulator } from './index.js';
 
 // Находим корневой элемент
 const rootElement = document.getElementById('root');

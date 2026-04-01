@@ -6,6 +6,7 @@ import {
   handleCalibrationPlanScreen,
   handleCalibrationSetupParallelsScreen,
   handleCalibrationSetupStandardsScreen,
+  handleCalibrationStepScreen,
   handleFileActionMenuScreen,
   handleFileListScreen,
   handleFileRootScreen,
@@ -31,7 +32,7 @@ import {
 } from "../../application/services/ScreenHandlers.js";
 import { BOOT_DELAY_MS, DIAG_COMPLETE_DELAY_MS, DIAG_STEP_DELAY_MS, WARMUP_STEP_MS } from "../../domain/constants/index.js";
 import {
-  buildCalibrationPlan,
+  createDiagnosticSteps,
   fileExtByGroup,
   findNextMeasuredIndex,
   findNextPendingStep,
@@ -45,6 +46,12 @@ import {
 const deviceService = new DeviceService();
 const cliService = new CliService();
 const INPUT_CHAR_RE = /^[0-9A-Za-zА-Яа-яЁё ]$/;
+
+function getDiagnosticStepResult(state, index) {
+  if (index === 3 && !state.d2Lamp) return "error";
+  if (index === 4 && !state.wLamp) return "error";
+  return "success";
+}
 
 export function useDeviceController() {
   const [device, setDevice] = useState(initialDevice);
@@ -407,7 +414,6 @@ export function useDeviceController() {
       exportFile,
       handleInputAction,
       resetAll,
-      buildCalibrationPlan,
       setMultiwaveValueMode,
     };
 
@@ -480,7 +486,6 @@ export function useDeviceController() {
         return;
     }
   }, [
-    buildCalibrationPlan,
     deleteCalibrationAtCursor,
     deleteFile,
     device,
@@ -526,21 +531,39 @@ export function useDeviceController() {
   }, [handleAction]);
 
   useEffect(() => {
-    const bootTimer = setTimeout(() => setDevice((d) => ({ ...d, screen: "diagnostic" })), BOOT_DELAY_MS);
+    const bootTimer = setTimeout(() => setDevice((d) => ({
+      ...d,
+      screen: "diagnostic",
+      diagIndex: 0,
+      diagnosticSteps: createDiagnosticSteps(),
+    })), BOOT_DELAY_MS);
     return () => clearTimeout(bootTimer);
   }, []);
 
   useEffect(() => {
     if (device.screen !== "diagnostic") return undefined;
     if (device.emulatorPaused) return undefined;
-    if (device.diagIndex >= 7) {
+    if (device.diagIndex >= (device.diagnosticSteps?.length ?? 0)) {
       const timer = setTimeout(() => setDevice((d) => ({ ...d, screen: "warmup" })), DIAG_COMPLETE_DELAY_MS);
       return () => clearTimeout(timer);
     }
 
-    const timer = setTimeout(() => setDevice((d) => ({ ...d, diagIndex: d.diagIndex + 1 })), DIAG_STEP_DELAY_MS);
+    const timer = setTimeout(() => setDevice((d) => {
+      const nextSteps = (d.diagnosticSteps ?? []).map((step, index) => {
+        if (index < d.diagIndex) return step;
+        if (index === d.diagIndex) return { ...step, status: getDiagnosticStepResult(d, d.diagIndex) };
+        if (index === d.diagIndex + 1) return { ...step, status: "running" };
+        return step;
+      });
+
+      return {
+        ...d,
+        diagIndex: d.diagIndex + 1,
+        diagnosticSteps: nextSteps,
+      };
+    }), DIAG_STEP_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [device.diagIndex, device.emulatorPaused, device.screen]);
+  }, [device.diagIndex, device.diagnosticSteps, device.emulatorPaused, device.screen]);
 
   useEffect(() => {
     if (device.screen !== "warmup") return undefined;

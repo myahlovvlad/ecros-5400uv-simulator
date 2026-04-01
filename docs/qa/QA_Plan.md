@@ -1,4 +1,4 @@
-# QA Plan
+﻿# QA Plan
 
 ## Scope
 - Unit regression for domain logic, device services, state bus, and LCD renderer helpers.
@@ -15,8 +15,9 @@
 - `npm run test:unit:qa` must generate a green or explicitly reviewable Vitest report.
 - `npm run test:ui` must complete without Playwright failures.
 - `npm run test:ui` must also pass Playwright baseline screenshot comparison for the panel shell, LCD frame, device status after CLI wavelength change, and LCD editor tile state.
-- `npm run qa:report` must produce `qa_reports.json`, `debug_summary.txt`, and `qa_dashboard.html`.
+- `npm run qa:report` must produce `qa-artifacts/reports/qa_reports.json`, `qa-artifacts/reports/debug_summary.txt`, and `qa-artifacts/reports/qa_dashboard.html`.
 
 ## Current focus
 - Keep E2E coverage intentionally shallow but stable: boot, panel clickability, CLI wavelength change, LCD editor interaction, screenshot capture, and committed pixel baselines.
 - Expand only after the bitmap LCD state becomes deterministic enough for broader baseline coverage.
+

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { getLcdRows, LCDRenderer } from "../../src/infrastructure/adapters/LcdRenderer.js";
+import {
+  getBitmapGlyphMatrix,
+  getLcdRows,
+  LCDRenderer,
+  serializeBitmapFontCDefinition,
+  serializeScreenBufferCDefinition,
+} from "../../src/infrastructure/adapters/LcdRenderer.js";
+import { createDiagnosticSteps, initialDevice } from "../../src/domain/usecases/index.js";
 import { PANEL_LABEL_DEFAULTS } from "../../src/presentation/components/InstrumentPanel.jsx";
 
 function createPixelRecordingContext() {
@@ -113,11 +120,52 @@ describe("LCDRenderer glyph lookup", () => {
     expect(renderPreviewPixels("Ç")).not.toEqual(renderPreviewPixels("C"));
   });
 
-  it("keeps Д and д on the full baseline and lifts λ to uppercase height", () => {
+  it("keeps Д and д on the full baseline, keeps к lowercase, and lifts λ to uppercase height", () => {
     expect(getRenderedGlyphBox("Д")).toMatchObject({ minY: 2, maxY: 9 });
     expect(getRenderedGlyphBox("д")).toMatchObject({ maxY: 9 });
-    expect(getRenderedGlyphBox("к").minY).toBeLessThanOrEqual(getRenderedGlyphBox("д").minY);
+    expect(getRenderedGlyphBox("к")).toMatchObject({ minY: 4, maxY: 9 });
     expect(getRenderedGlyphBox("λ")).toMatchObject({ minY: 2, maxY: 9 });
+  });
+
+  it("applies glyph overrides on top of the default bitmap font", () => {
+    const override = Array.from({ length: 8 }, () => [1, 1, 1, 1, 1]);
+
+    expect(getBitmapGlyphMatrix("A")).not.toEqual(override);
+    expect(getBitmapGlyphMatrix("A", { glyphOverrides: { A: override } })).toEqual(override);
+  });
+
+  it("renders lowercase к from the bitmap specification without an extra bottom row", () => {
+    expect(getBitmapGlyphMatrix("к")).toEqual([
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [1, 0, 0, 1],
+      [1, 0, 0, 1],
+      [1, 0, 1, 0],
+      [1, 1, 0, 0],
+      [1, 0, 1, 0],
+      [1, 0, 0, 1],
+    ]);
+  });
+
+  it("keeps regular lowercase Cyrillic and Latin glyphs on a unified baseline", () => {
+    const samples = "абвгежзиклмнопрстуфхцчшщъыьэюяabcdefghijklmnopqrstuvwxyz";
+    const boxes = Array.from(samples).map((char) => ({ char, box: getRenderedGlyphBox(char) }));
+    const reference = boxes[0].box;
+
+    boxes.forEach(({ char, box }) => {
+      expect(box, `glyph ${char}`).toMatchObject({ minY: reference.minY, maxY: reference.maxY });
+    });
+  });
+
+  it("serializes the current LCD screen and font into C-like arrays", () => {
+    const screenExport = serializeScreenBufferCDefinition([{ text: "TEST", x: 2, y: 2 }], {
+      variableName: "kUnitScreen",
+    });
+    const fontExport = serializeBitmapFontCDefinition({ Ж: Array.from({ length: 8 }, () => [1, 0, 1, 0, 1]) });
+
+    expect(screenExport).toContain("static const uint8_t kUnitScreen");
+    expect(fontExport).toContain("static const lcd_glyph_t kLcdGlyphs[]");
+    expect(fontExport).toContain("__status_success");
   });
 });
 
@@ -131,6 +179,22 @@ describe("getLcdRows", () => {
 
     expect(rows[0]?.text.trimEnd()).toBe("Прогрев");
     expect(rows[1]?.text.trimEnd()).toBe("ESC - Пропуск");
+  });
+
+  it("renders diagnostic rows with explicit status indicators", () => {
+    const device = initialDevice();
+    device.screen = "diagnostic";
+    device.diagnosticSteps = createDiagnosticSteps().map((step, index) => ({
+      ...step,
+      status: index === 0 ? "success" : index === 1 ? "running" : index === 2 ? "error" : "pending",
+    }));
+
+    const rows = getLcdRows(device);
+
+    expect(rows[1]).toMatchObject({ statusIndicator: "success" });
+    expect(rows[2]).toMatchObject({ statusIndicator: "running" });
+    expect(rows[3]).toMatchObject({ statusIndicator: "error" });
+    expect(rows[4]).toMatchObject({ statusIndicator: "pending" });
   });
 });
 

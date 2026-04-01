@@ -3,6 +3,7 @@ import path from "node:path";
 
 const cwd = process.cwd();
 const qaArtifactsDir = path.join(cwd, "qa-artifacts");
+const qaReportsDir = path.join(qaArtifactsDir, "reports");
 const unitReportPath = path.join(qaArtifactsDir, "unit", "vitest-report.json");
 const uiReportPath = path.join(qaArtifactsDir, "ui", "playwright-report.json");
 const screenshotDir = path.join(qaArtifactsDir, "ui", "screenshots");
@@ -167,12 +168,12 @@ function buildReleaseReadiness(unit, ui, screenshots, baselines) {
     "## Current assessment",
     blockers === 0
       ? "The local QA cycle is green. Playwright visual checks are now baseline-gated through pixel-diff snapshots."
-      : "Release is blocked by failing tests. Use `debug_summary.txt` and `playwright-report/index.html` to inspect root causes.",
+      : "Release is blocked by failing tests. Use `qa-artifacts/reports/debug_summary.txt` and `playwright-report/index.html` to inspect root causes.",
   ].join("\n");
 }
 
 function buildDashboard(report, screenshots, baselines) {
-  const listItems = screenshots.map((file) => `<li><a href="qa-artifacts/ui/screenshots/${file}">${file}</a></li>`).join("");
+  const listItems = screenshots.map((file) => `<li><a href="../ui/screenshots/${file}">${file}</a></li>`).join("");
   const baselineItems = baselines.map((file) => `<li>${file}</li>`).join("");
 
   return `<!doctype html>
@@ -218,7 +219,7 @@ function buildDashboard(report, screenshots, baselines) {
 }
 
 function updateRiskTrends(report) {
-  const targetPath = path.join(cwd, "risk_trends.csv");
+  const targetPath = path.join(qaReportsDir, "risk_trends.csv");
   const header = "timestamp,unit_passed,unit_failed,ui_passed,ui_failed,total_failures\n";
   const row = `${report.generatedAt},${report.unit.passed},${report.unit.failed},${report.ui.passed},${report.ui.failed},${report.summary.totalFailures}\n`;
 
@@ -239,6 +240,7 @@ function updateRiskTrends(report) {
 ensureDir(qaArtifactsDir);
 ensureDir(path.join(qaArtifactsDir, "unit"));
 ensureDir(path.join(qaArtifactsDir, "ui"));
+ensureDir(qaReportsDir);
 
 const unit = normalizeVitestReport(readJsonIfExists(unitReportPath));
 const ui = normalizePlaywrightReport(readJsonIfExists(uiReportPath));
@@ -265,17 +267,17 @@ const report = {
   },
 };
 
-fs.writeFileSync(path.join(cwd, "qa_reports.json"), JSON.stringify(report, null, 2), "utf8");
-fs.writeFileSync(path.join(cwd, "debug_summary.txt"), buildDebugSummary(unit, ui), "utf8");
-fs.writeFileSync(path.join(cwd, "review_notes.md"), buildReviewNotes(unit, ui), "utf8");
-fs.writeFileSync(path.join(cwd, "QA_Release_Readiness.md"), buildReleaseReadiness(unit, ui, screenshots, baselines), "utf8");
-fs.writeFileSync(path.join(cwd, "qa_dashboard.html"), buildDashboard(report, screenshots, baselines), "utf8");
+fs.writeFileSync(path.join(qaReportsDir, "qa_reports.json"), JSON.stringify(report, null, 2), "utf8");
+fs.writeFileSync(path.join(qaReportsDir, "debug_summary.txt"), buildDebugSummary(unit, ui), "utf8");
+fs.writeFileSync(path.join(qaReportsDir, "review_notes.md"), buildReviewNotes(unit, ui), "utf8");
+fs.writeFileSync(path.join(qaReportsDir, "QA_Release_Readiness.md"), buildReleaseReadiness(unit, ui, screenshots, baselines), "utf8");
+fs.writeFileSync(path.join(qaReportsDir, "qa_dashboard.html"), buildDashboard(report, screenshots, baselines), "utf8");
 updateRiskTrends(report);
 
 console.log("QA report artifacts generated:");
-console.log(" - qa_reports.json");
-console.log(" - debug_summary.txt");
-console.log(" - review_notes.md");
-console.log(" - QA_Release_Readiness.md");
-console.log(" - qa_dashboard.html");
-console.log(" - risk_trends.csv");
+console.log(" - qa-artifacts/reports/qa_reports.json");
+console.log(" - qa-artifacts/reports/debug_summary.txt");
+console.log(" - qa-artifacts/reports/review_notes.md");
+console.log(" - qa-artifacts/reports/QA_Release_Readiness.md");
+console.log(" - qa-artifacts/reports/qa_dashboard.html");
+console.log(" - qa-artifacts/reports/risk_trends.csv");

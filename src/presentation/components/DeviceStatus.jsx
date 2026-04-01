@@ -12,6 +12,7 @@ export function DeviceStatus({
   onMeasure,
   onDarkCurrent,
   onCalibrateWl,
+  onExportLcdImage,
 }) {
   return (
     <div data-testid="device-status" className="grid gap-4 lg:grid-cols-2">
@@ -19,6 +20,15 @@ export function DeviceStatus({
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Состояние прибора</h2>
           <div className="flex gap-2">
+            <button
+              type="button"
+              data-testid="device-export-lcd"
+              onClick={onExportLcdImage}
+              className="rounded-xl border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-50"
+              title="Скачать изображение LCD экрана"
+            >
+              📷 Экспорт LCD
+            </button>
             <button type="button" data-testid="device-toggle-pause" onClick={onTogglePause} className="rounded-xl border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-50">
               {device.emulatorPaused ? "Продолжить" : "Пауза"}
             </button>

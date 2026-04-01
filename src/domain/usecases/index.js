@@ -13,6 +13,24 @@ import { clamp, formatMmSs } from "./utils.js";
 const QUANT_CUVETTE_MIN_MM = 1;
 const QUANT_CUVETTE_MAX_MM = 100;
 
+const DIAGNOSTIC_STEP_LABELS = [
+  "Фильтр",
+  "Лампа",
+  "Детектор",
+  "D2-лампа",
+  "W-лампа",
+  "Калибр. λ",
+  "Темн. ток",
+];
+
+export function createDiagnosticSteps() {
+  return DIAGNOSTIC_STEP_LABELS.map((label, index) => ({
+    id: `diagnostic-${index + 1}`,
+    label,
+    status: index === 0 ? "running" : "pending",
+  }));
+}
+
 export function referenceEnergyAt(wl) {
   const trend = 33880 - Math.abs(wl - 540) * 4.2;
   const ripple = 320 * Math.sin(wl / 46) + 120 * Math.cos(wl / 23);
@@ -283,6 +301,7 @@ export function initialDevice() {
     busy: false,
     busyLabel: "ПОДОЖДИТЕ",
     diagIndex: 0,
+    diagnosticSteps: createDiagnosticSteps(),
     warmupRemaining: WARMUP_DURATION_SEC,
     currentSample: "reference",
     logLines: ["2026-03-24T16:20:17.662 - connect", "2026-03-24T16:20:26.365 - ok."],
