@@ -1,5 +1,6 @@
 import { DARK_VALUES, FILE_EXTENSIONS, VALID_FILE_RE, WL_MAX, WL_MIN, WARMUP_DURATION_SEC } from "../constants/index.js";
 import { clamp, formatMmSs } from "./utils.js";
+import { MODES, TASK_STATES, ZERO_STATES, makeZeroSignature } from "../entities/workflowTypes.js";
 
 export function referenceEnergyAt(wl) {
   const trend = 33880 - Math.abs(wl - 540) * 4.2;
@@ -71,6 +72,7 @@ export function seedFiles() {
     ГРАДУИРОВКА: [{ name: "FE_SERIES_V1", ext: ".std", exported: false }],
     КОЭФФИЦИЕНТ: [{ name: "PROTEIN_KB", ext: ".cof", exported: false }],
     КИНЕТИКА: [{ name: "REACTION_A", ext: ".kin", exported: false }],
+    МНОГОВОЛН: [{ name: "A260_A280", ext: ".mwl", exported: false }],
   };
 }
 
@@ -134,6 +136,7 @@ export function buildUsbExportPreview({
   quantK,
   quantB,
   lastA,
+  multiwlResults,
 }) {
   const lines = ["USB_DEVICE=USB1", `GROUP=${group}`, `FILE=${name}${ext}`, "EXPORT_FORMAT=csv", "---"];
 
@@ -174,6 +177,19 @@ export function buildUsbExportPreview({
     return lines.join("\n");
   }
 
+  if (group === "МНОГОВОЛН") {
+    lines.push("wavelengths,formula,computed");
+    const rows = multiwlResults ?? [];
+    if (!rows.length) {
+      lines.push(",,,");
+    } else {
+      rows.slice(-10).forEach((row) => {
+        lines.push(`${row.wavelengths.join("|")},${row.formula},${row.computed.join("|")}`);
+      });
+    }
+    return lines.join("\n");
+  }
+
   lines.push("time_s,A");
   if (!kineticPoints.length) {
     lines.push("0,");
@@ -184,14 +200,25 @@ export function buildUsbExportPreview({
 }
 
 export function initialDevice() {
-  return {
+  const device = {
     screen: "boot",
+    fsmState: "SYS_BOOT",
     previousScreen: "main",
+    mode: MODES.PHOTO,
+    submode: null,
+    taskState: TASK_STATES.IDLE,
+    zeroState: ZERO_STATES.REQUIRED,
+    dirty: false,
+    methodLoaded: false,
+    methodLockedUnits: false,
     mainIndex: 0,
     photometryValueIndex: 0,
     quantIndex: 1,
     kineticsIndex: 0,
+    multiwlIndex: 0,
+    multiwlFormulaIndex: 0,
     settingsIndex: 0,
+    statisticsModeIndex: 0,
     unitsIndex: 4,
     wavelength: 546.2,
     gain: 1,
@@ -208,6 +235,9 @@ export function initialDevice() {
     returnScreen: "photometry",
     measurements: [],
     measurementCursor: 0,
+    photoReplicates: 3,
+    photoSeries: { seriesNo: 1, replicateNo: 0, replicatesRequired: 3 },
+    photoStats: { mean: 0, sd: 0 },
     kineticPoints: [],
     kineticDuration: 60,
     kineticUpper: 1.5,
@@ -236,14 +266,35 @@ export function initialDevice() {
     warning: null,
     warningReturn: "main",
     dialogTitle: "",
+    statisticsMode: "СРЕДНЕЕ",
     calibration: {
       standards: 3,
       parallels: 3,
+      unknownReplicates: 3,
+      modelType: "LINREG",
+      aggregatedStandards: [],
+      unknownResults: [],
+      equation: null,
       plan: buildCalibrationPlan(3, 3),
       stepIndex: 0,
       resultCursor: 0,
     },
+    quantCoefContext: {
+      currentUnknownNo: 1,
+      correctionFactors: { dilution: 1, sampleMass: null, finalVolume: null, conversionFactor: 1 },
+    },
+    multiwl: {
+      wavelengths: [260, 280],
+      wlCount: 2,
+      formula: "RAW",
+      paused: false,
+    },
+    multiwlResults: [],
+    zeroInvalidationReason: "BOOT",
   };
+
+  device.zeroSignature = makeZeroSignature(device);
+  return device;
 }
 
 export function validateFileName(name) {

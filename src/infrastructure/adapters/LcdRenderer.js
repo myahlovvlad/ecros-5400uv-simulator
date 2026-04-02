@@ -3,9 +3,11 @@ import {
   FILE_GROUPS,
   MENU_KINETICS,
   MENU_MAIN,
+  MENU_MULTIWL,
   MENU_PHOTOMETRY_VALUE,
   MENU_QUANT,
   MENU_SETTINGS,
+  STAT_MODES,
   UNITS,
 } from "../../domain/constants/index.js";
 import {
@@ -81,7 +83,7 @@ export function getLcdRows(device) {
     push(center(device.inputBuffer || "_"));
     push("0-9 . - УДАЛИТЬ");
     push("ВВОД - ПРИНЯТЬ");
-    push("ESC - ОТМЕНА");
+    push("ESC - НАЗАД");
     return rows;
   }
 
@@ -252,6 +254,10 @@ export function getLcdRows(device) {
   if (device.screen === "calibrationGraph") {
     push("ГРАФИК ГРАДУИР.", true);
     push(`ГОТОВО ${getCalibrationDoneCount(device.calibration.plan)}/${device.calibration.plan.length}`);
+    if (device.calibration.equation) {
+      push(`K=${device.calibration.equation.slope.toFixed(3)}`);
+      push(`B=${device.calibration.equation.intercept.toFixed(3)}`);
+    }
     push("ESC - ЖУРНАЛ");
     push("ФАЙЛ - СОХРАНИТЬ");
     return rows;
@@ -276,16 +282,51 @@ export function getLcdRows(device) {
     return rows;
   }
 
+  if (device.screen === "multiwlMain") {
+    push("МНОГОВ. АНАЛИЗ", true);
+    MENU_MULTIWL.forEach((item, index) => push(item, device.multiwlIndex === index));
+    push(`ЛЯМБДА=${device.multiwl.wlCount}`);
+    push(`ФОРМУЛА=${device.multiwl.formula}`);
+    return rows;
+  }
+
+  if (device.screen === "multiwlFormula") {
+    push("ФОРМУЛА", true);
+    ["RAW", "DIFF", "RATIO"].forEach((item, index) => push(item, device.multiwlFormulaIndex === index));
+    push("ВВОД - ВЫБРАТЬ");
+    push("ESC - НАЗАД");
+    return rows;
+  }
+
+  if (device.screen === "multiwlRun") {
+    const last = device.multiwlResults.at(-1);
+    push("МНОГОВОЛН", true);
+    push(`ФОРМУЛА=${device.multiwl.formula}`);
+    push(`СТАТУС=${device.multiwl.paused ? "ПАУЗА" : device.taskState}`);
+    push(`РЕЗ=${last?.computed?.map((v) => Number(v).toFixed(3)).join("|") || "-"}`.slice(0, 20));
+    push("START - ПАУЗА");
+    push("ФАЙЛ - СОХРАН.");
+    push("ESC - НАЗАД");
+    return rows;
+  }
+
   if (device.screen === "settings") {
     push("НАСТРОЙКИ", true);
     MENU_SETTINGS.forEach((item, index) => {
-      const label =
-        index === 0 ? `${item} ${device.d2Lamp ? "ВКЛ" : "ВЫКЛ"}` :
-        index === 1 ? `${item} ${device.wLamp ? "ВКЛ" : "ВЫКЛ"}` :
-        item;
+      let label = item;
+      if (index === 0) label = `${item} ${device.statisticsMode}`;
+      if (index === 1) label = `${item} ${device.d2Lamp ? "ВКЛ" : "ВЫКЛ"}`;
+      if (index === 2) label = `${item} ${device.wLamp ? "ВКЛ" : "ВЫКЛ"}`;
       push(label, device.settingsIndex === index);
     });
-    push(`ЩЕЛЬ=${device.slip} САМПЛ=${device.sampler}`);
+    return rows;
+  }
+
+  if (device.screen === "settingsStatMode") {
+    push("СТАТИСТИКА", true);
+    STAT_MODES.forEach((item, index) => push(item, device.statisticsModeIndex === index));
+    push("ВВОД - ВЫБРАТЬ");
+    push("ESC - НАЗАД");
     return rows;
   }
 
@@ -310,7 +351,7 @@ export function getLcdRows(device) {
         ? `${device.lastComputedT.toFixed(1)} %Т`
         : `${device.lastEnergy}`,
   ));
-  push("--------------------");
+  push(`СЕРИЯ ${device.photoSeries?.seriesNo || 1}-${device.photoSeries?.replicateNo || 0}`);
   currentRows.forEach((measurement, localIndex) => {
     const globalIndex = Math.max(0, device.measurements.length - currentRows.length) + localIndex;
     const line = device.photometryValueIndex === 0
