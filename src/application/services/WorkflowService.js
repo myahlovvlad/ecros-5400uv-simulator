@@ -99,19 +99,70 @@ export class WorkflowService {
     };
   }
 
+  setStandardConcentration(device, standardIndex, concentration) {
+    const standardConcentrations = [...(device.calibration?.standardConcentrations ?? [])];
+    standardConcentrations[standardIndex - 1] = concentration;
+    return {
+      ...device,
+      calibration: {
+        ...device.calibration,
+        standardConcentrations,
+      },
+    };
+  }
+
+  aggregateCalibrationStandards(device) {
+    const grouped = new Map();
+    for (const step of device.calibration?.plan ?? []) {
+      if (!step?.result) continue;
+      const key = step.standardIndex;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(step.result);
+    }
+
+    const aggregatedStandards = Array.from(grouped.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([standardIndex, results]) => {
+        const concentration = device.calibration?.standardConcentrations?.[standardIndex - 1] ?? standardIndex;
+        const aValues = results.map((item) => item.a);
+        const tValues = results.map((item) => item.t);
+        const eValues = results.map((item) => item.energy);
+        return {
+          standardIndex,
+          concentration,
+          x: concentration,
+          y: mean(aValues),
+          meanA: mean(aValues),
+          meanT: mean(tValues),
+          meanE: mean(eValues),
+          sdA: stddev(aValues),
+          replicates: results.length,
+        };
+      });
+
+    return {
+      ...device,
+      calibration: {
+        ...device.calibration,
+        aggregatedStandards,
+      },
+    };
+  }
+
   buildCurveEquation(device) {
-    const points = (device.calibration?.aggregatedStandards ?? []).filter((point) => Number.isFinite(point?.x) && Number.isFinite(point?.y));
+    const aggregatedDevice = this.aggregateCalibrationStandards(device);
+    const points = (aggregatedDevice.calibration?.aggregatedStandards ?? []).filter((point) => Number.isFinite(point?.x) && Number.isFinite(point?.y));
     if (points.length < 2) {
       return {
-        ...device,
+        ...aggregatedDevice,
         calibration: {
-          ...device.calibration,
+          ...aggregatedDevice.calibration,
           equation: null,
         },
       };
     }
 
-    const forceZero = device.calibration?.modelType === "ZERO_INTERCEPT";
+    const forceZero = aggregatedDevice.calibration?.modelType === "ZERO_INTERCEPT";
     let slope = 0;
     let intercept = 0;
 
@@ -129,9 +180,9 @@ export class WorkflowService {
     }
 
     return {
-      ...device,
+      ...aggregatedDevice,
       calibration: {
-        ...device.calibration,
+        ...aggregatedDevice.calibration,
         equation: { slope, intercept, forceZero },
       },
     };
@@ -141,6 +192,78 @@ export class WorkflowService {
     const equation = device.calibration?.equation;
     if (!equation || Math.abs(equation.slope) < 1e-9) return null;
     return (signalValue - equation.intercept) / equation.slope;
+  }
+
+  startUnknownSampleSeries(device) {
+    return {
+      ...device,
+      taskState: TASK_STATES.RUNNING,
+      calibration: {
+        ...device.calibration,
+        currentUnknownReplicate: 0,
+        currentUnknownReplicates: [],
+      },
+    };
+  }
+
+  appendCalibrationUnknownReplicate(device, measurement) {
+    const currentUnknownReplicate = (device.calibration?.currentUnknownReplicate ?? 0) + 1;
+    const concentration = this.calculateCurveConcentration(device, measurement.a);
+    const entry = {
+      sampleNo: device.calibration?.currentUnknownNo ?? 1,
+      replicateNo: currentUnknownReplicate,
+      concentration,
+      measurement,
+      index: `${device.calibration?.currentUnknownNo ?? 1}-${currentUnknownReplicate}`,
+    };
+    const currentUnknownReplicates = [...(device.calibration?.currentUnknownReplicates ?? []), entry];
+    const unknownReplicatesRequired = device.calibration?.unknownReplicates ?? 1;
+
+    let calibration = {
+      ...device.calibration,
+      currentUnknownReplicate,
+      currentUnknownReplicates,
+    };
+    let taskState = TASK_STATES.RUNNING;
+
+    if (currentUnknownReplicate >= unknownReplicatesRequired) {
+      const concentrations = currentUnknownReplicates.map((item) => item.concentration).filter((value) => Number.isFinite(value));
+      calibration = {
+        ...calibration,
+        unknownResults: [
+          ...(device.calibration?.unknownResults ?? []),
+          {
+            sampleNo: device.calibration?.currentUnknownNo ?? 1,
+            replicates: currentUnknownReplicates,
+            meanConcentration: mean(concentrations),
+            sdConcentration: stddev(concentrations),
+          },
+        ],
+      };
+      taskState = TASK_STATES.WAIT_NEXT_SAMPLE;
+    }
+
+    return {
+      ...device,
+      taskState,
+      calibration,
+      lastEnergy: measurement.energy,
+      lastComputedA: measurement.a,
+      lastComputedT: measurement.t,
+    };
+  }
+
+  nextUnknownSample(device) {
+    return {
+      ...device,
+      taskState: TASK_STATES.READY,
+      calibration: {
+        ...device.calibration,
+        currentUnknownNo: (device.calibration?.currentUnknownNo ?? 1) + 1,
+        currentUnknownReplicate: 0,
+        currentUnknownReplicates: [],
+      },
+    };
   }
 
   calculateCoefConcentration(device, signalValue) {

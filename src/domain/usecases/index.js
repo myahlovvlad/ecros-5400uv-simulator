@@ -137,6 +137,7 @@ export function buildUsbExportPreview({
   quantB,
   lastA,
   multiwlResults,
+  calibrationUnknownResults,
 }) {
   const lines = ["USB_DEVICE=USB1", `GROUP=${group}`, `FILE=${name}${ext}`, "EXPORT_FORMAT=csv", "---"];
 
@@ -165,6 +166,13 @@ export function buildUsbExportPreview({
         lines.push(
           `${step.code},${step.standardIndex},${step.parallelIndex},${step.result.a.toFixed(4)},${step.result.t.toFixed(2)},${step.result.energy}`,
         );
+      });
+    }
+    if ((calibrationUnknownResults ?? []).length) {
+      lines.push("---");
+      lines.push("sample_no,replicate_count,mean_concentration,sd_concentration");
+      calibrationUnknownResults.forEach((sample) => {
+        lines.push(`${sample.sampleNo},${sample.replicates.length},${sample.meanConcentration?.toFixed(6) ?? ""},${sample.sdConcentration?.toFixed(6) ?? ""}`);
       });
     }
     return lines.join("\n");
@@ -253,7 +261,7 @@ export function initialDevice() {
     busyLabel: "ПОДОЖДИТЕ",
     diagIndex: 0,
     warmupRemaining: WARMUP_DURATION_SEC,
-    currentSample: "reference",
+    currentSample: "sampleA",
     logLines: ["2026-03-24T16:20:17.662 - connect", "2026-03-24T16:20:26.365 - ok."],
     fileRootIndex: 0,
     fileListIndex: 0,
@@ -272,7 +280,11 @@ export function initialDevice() {
       parallels: 3,
       unknownReplicates: 3,
       modelType: "LINREG",
+      standardConcentrations: [1, 2, 3],
       aggregatedStandards: [],
+      currentUnknownNo: 1,
+      currentUnknownReplicate: 0,
+      currentUnknownReplicates: [],
       unknownResults: [],
       equation: null,
       plan: buildCalibrationPlan(3, 3),

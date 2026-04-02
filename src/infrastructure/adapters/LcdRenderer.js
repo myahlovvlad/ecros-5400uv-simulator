@@ -217,10 +217,11 @@ export function getLcdRows(device) {
 
   if (device.screen === "calibrationStep") {
     const step = device.calibration.plan[device.calibration.stepIndex];
+    const concentration = device.calibration.standardConcentrations?.[step?.standardIndex - 1];
     push("НОВАЯ ГРАДУИР.", true);
     push(`ВСТАВЬТЕ ${step?.code || "С-1-1"}`);
-    push(`СЕРИЯ ${step?.parallelIndex || 1}`);
     push(`СТАНДАРТ ${step?.standardIndex || 1}`);
+    push(`КОНЦ=${Number.isFinite(concentration) ? concentration : "-"}`.slice(0, 20));
     push("НОЛЬ - ОБНУЛИТЬ");
     push("START - ИЗМЕРИТЬ");
     push("ESC - ПЛАН");
@@ -254,12 +255,37 @@ export function getLcdRows(device) {
   if (device.screen === "calibrationGraph") {
     push("ГРАФИК ГРАДУИР.", true);
     push(`ГОТОВО ${getCalibrationDoneCount(device.calibration.plan)}/${device.calibration.plan.length}`);
+    push(`ТОЧЕК ${device.calibration.aggregatedStandards?.length || 0}`);
     if (device.calibration.equation) {
-      push(`K=${device.calibration.equation.slope.toFixed(3)}`);
-      push(`B=${device.calibration.equation.intercept.toFixed(3)}`);
+      push(`K=${device.calibration.equation.slope.toFixed(3)}`.slice(0, 20));
+      push(`B=${device.calibration.equation.intercept.toFixed(3)}`.slice(0, 20));
     }
-    push("ESC - ЖУРНАЛ");
+    push("ВНИЗ - ПРОБЫ");
     push("ФАЙЛ - СОХРАНИТЬ");
+    return rows;
+  }
+
+  if (device.screen === "calibrationUnknown") {
+    push("НЕИЗВ. ПРОБА", true);
+    push(`ПРОБА ${device.calibration.currentUnknownNo}`);
+    push(`ПОВТОР ${device.calibration.currentUnknownReplicate}/${device.calibration.unknownReplicates}`);
+    push(`A=${device.lastComputedA.toFixed(3)}`);
+    push(`C=${(device.calibration.currentUnknownReplicates.at(-1)?.concentration ?? 0).toFixed(3)} ${UNITS[device.unitsIndex]}`.slice(0, 20));
+    push("START - ИЗМЕРИТЬ");
+    push("ФАЙЛ - СОХРАН.");
+    push("ESC - ГРАФИК");
+    return rows;
+  }
+
+  if (device.screen === "calibrationUnknownNext") {
+    const last = device.calibration.unknownResults.at(-1);
+    push("СЛЕД. РАСТВОР", true);
+    push(`ПРОБА ${last?.sampleNo ?? device.calibration.currentUnknownNo}`);
+    push(`Cср=${(last?.meanConcentration ?? 0).toFixed(3)} ${UNITS[device.unitsIndex]}`.slice(0, 20));
+    push(`SD=${(last?.sdConcentration ?? 0).toFixed(3)}`.slice(0, 20));
+    push("УСТ. СЛЕД. Р-Р");
+    push("START/ВВОД");
+    push("ESC - ГРАФИК");
     return rows;
   }
 

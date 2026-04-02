@@ -83,6 +83,28 @@ export class DeviceService {
         screen: "calibrationJournal",
       },
       logEntry: `calibration -> ${step?.code ?? "-"}`,
+      measurement,
+    };
+  }
+
+  performCalibrationUnknownMeasure(state) {
+    const measurement = measureSample({
+      sample: state.currentSample,
+      wavelength: state.wavelength,
+      gain: state.gain,
+      e100: state.e100,
+      darkValues: state.darkValues,
+    });
+
+    return {
+      newState: {
+        ...state,
+        lastEnergy: measurement.energy,
+        lastComputedA: measurement.a,
+        lastComputedT: measurement.t,
+      },
+      logEntry: `unknown -> ${state.calibration?.currentUnknownNo ?? 1}`,
+      measurement,
     };
   }
 
@@ -157,11 +179,13 @@ export class DeviceService {
         ext: selected.ext,
         measurements: state.measurements,
         calibrationPlan: state.calibration.plan,
+        calibrationUnknownResults: state.calibration?.unknownResults,
         kineticPoints: state.kineticPoints,
         wavelength: state.wavelength,
         quantK: state.quantK,
         quantB: state.quantB,
         lastA: state.lastComputedA,
+        multiwlResults: state.multiwlResults,
       }),
       exportedAt: new Date().toLocaleString(),
     };
@@ -320,8 +344,11 @@ export class DeviceService {
     if (["kineticsRun", "kineticsGraph", "kineticsMenu"].includes(state.screen)) {
       return { group: "КИНЕТИКА", ext: fileExtByGroup("КИНЕТИКА") };
     }
-    if (["calibrationStep", "calibrationJournal", "calibrationGraph", "calibrationPlan"].includes(state.screen)) {
+    if (["calibrationStep", "calibrationJournal", "calibrationGraph", "calibrationPlan", "calibrationUnknown", "calibrationUnknownNext"].includes(state.screen)) {
       return { group: "ГРАДУИРОВКА", ext: fileExtByGroup("ГРАДУИРОВКА") };
+    }
+    if (["multiwlRun", "multiwlMain", "multiwlFormula"].includes(state.screen)) {
+      return { group: "МНОГОВОЛН", ext: fileExtByGroup("МНОГОВОЛН") };
     }
     return { group: "ФОТОМЕТРИЯ", ext: fileExtByGroup("ФОТОМЕТРИЯ") };
   }
