@@ -2,32 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CliService } from "../../application/services/CliService.js";
 import { DeviceService } from "../../application/services/DeviceService.js";
 import { WorkflowService } from "../../application/services/WorkflowService.js";
-import {
-  handleCalibrationJournalScreen,
-  handleCalibrationPlanScreen,
-  handleCalibrationSetupParallelsScreen,
-  handleCalibrationSetupStandardsScreen,
-  handleFileActionMenuScreen,
-  handleFileListScreen,
-  handleFileRootScreen,
-  handleInputScreen,
-  handleKineticsMenuScreen,
-  handleKineticsRunScreen,
-  handleMainScreen,
-  handleMultiWlFormulaScreen,
-  handleMultiWlMainScreen,
-  handleMultiWlRunScreen,
-  handlePhotometryScreen,
-  handlePhotometryValueScreen,
-  handleQuantMainScreen,
-  handleQuantUnitsScreen,
-  handleSaveDialogScreen,
-  handleSettingsScreen,
-  handleSettingsStatModeScreen,
-  handleVersionScreen,
-  handleWarningScreen,
-  handleWarmupScreen,
-} from "../../application/services/ScreenHandlers.js";
+import { routeScreenAction } from "../../application/services/ScreenRouter.js";
 import { BOOT_DELAY_MS, DIAG_COMPLETE_DELAY_MS, DIAG_STEP_DELAY_MS, WARMUP_STEP_MS } from "../../domain/constants/index.js";
 import {
   buildCalibrationPlan,
@@ -227,6 +202,10 @@ export function useDeviceController() {
     setDevice((d) => workflowService.toggleMultiWlPause(d));
   }, []);
 
+  const startCalibrationUnknownSeries = useCallback(() => {
+    setDevice((d) => ({ ...workflowService.startUnknownSampleSeries(d), screen: "calibrationUnknown" }));
+  }, []);
+
   const nextUnknownSample = useCallback(() => {
     setDevice((d) => ({ ...workflowService.nextUnknownSample(d), screen: "calibrationUnknown" }));
   }, []);
@@ -386,6 +365,8 @@ export function useDeviceController() {
       performRezero,
       performPhotometryMeasure,
       performCalibrationMeasure,
+      performCalibrationUnknownMeasure,
+      performQuantCoefMeasure,
       performDarkCurrent,
       performWavelengthCalibration,
       startKinetics,
@@ -404,138 +385,13 @@ export function useDeviceController() {
       handleInputAction,
       resetAll,
       buildCalibrationPlan,
+      startCalibrationUnknownSeries,
+      nextUnknownSample,
+      nextCoefSample,
+      toggleCoefPause,
     };
 
-    switch (device.screen) {
-      case "warning":
-        return handleWarningScreen(device, action, actions);
-      case "warmup":
-        return handleWarmupScreen(device, action, actions);
-      case "input":
-        return handleInputScreen(device, action, actions);
-      case "saveDialog":
-        return handleSaveDialogScreen(device, action, actions);
-      case "main":
-        return handleMainScreen(device, action, actions);
-      case "fileRoot":
-        return handleFileRootScreen(device, action, actions);
-      case "fileList":
-        return handleFileListScreen(device, action, actions);
-      case "fileActionMenu":
-        return handleFileActionMenuScreen(device, action, actions);
-      case "photometry":
-        return handlePhotometryScreen(device, action, actions);
-      case "photometryGraph":
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "photometry" }));
-        return;
-      case "photometryValue":
-        return handlePhotometryValueScreen(device, action, actions);
-      case "quantMain":
-        return handleQuantMainScreen(device, action, actions);
-      case "quantUnits":
-        return handleQuantUnitsScreen(device, action, actions);
-      case "quantCoef": {
-        if (action === "ZERO") return performRezero();
-        if (action === "GOTOλ") {
-          return setDevice((d) => ({
-            ...d,
-            screen: "input",
-            inputTarget: "wavelength",
-            inputBuffer: `${d.wavelength.toFixed(1)}`,
-            dialogTitle: "ВВЕДИТЕ ЛЯМ, НМ",
-            returnScreen: "quantCoef",
-          }));
-        }
-        if (action === "SET") return showWarning("РЕДАКТИР.", "1=К 2=Б 3=N", "quantCoef");
-        if (action === "1") return setDevice((d) => ({ ...d, screen: "input", inputTarget: "quantK", inputBuffer: String(d.quantK), dialogTitle: "ВВЕДИТЕ К", returnScreen: "quantCoef" }));
-        if (action === "2") return setDevice((d) => ({ ...d, screen: "input", inputTarget: "quantB", inputBuffer: String(d.quantB), dialogTitle: "ВВЕДИТЕ Б", returnScreen: "quantCoef" }));
-        if (action === "3") return setDevice((d) => ({ ...d, screen: "input", inputTarget: "quantCoefReplicates", inputBuffer: String(d.quantCoefContext?.unknownReplicates ?? 1), dialogTitle: "ПОВТ. ПРОБ", returnScreen: "quantCoef" }));
-        if (action === "FILE") return openSaveDialog("КОЭФФИЦИЕНТ", "quantCoef");
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "quantMain", taskState: TASK_STATES.IDLE }));
-        if (action === "START/STOP") {
-          if (device.taskState === TASK_STATES.RUNNING && (device.quantCoefContext?.currentUnknownReplicate ?? 0) > 0) return toggleCoefPause();
-          return performQuantCoefMeasure();
-        }
-        if (action === "ENTER") return performQuantCoefMeasure();
-        return;
-      }
-      case "quantCoefPaused":
-        if (action === "START/STOP") return toggleCoefPause();
-        if (action === "FILE") return openSaveDialog("КОЭФФИЦИЕНТ", "quantCoefPaused");
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "quantCoef" }));
-        return;
-      case "quantCoefNext":
-        if (action === "START/STOP" || action === "ENTER") return nextCoefSample();
-        if (action === "FILE") return openSaveDialog("КОЭФФИЦИЕНТ", "quantCoefNext");
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "quantCoef", taskState: TASK_STATES.READY }));
-        return;
-      case "calibrationSetupStandards":
-        return handleCalibrationSetupStandardsScreen(device, action, actions);
-      case "calibrationSetupParallels":
-        return handleCalibrationSetupParallelsScreen(device, action, actions);
-      case "calibrationPlan":
-        return handleCalibrationPlanScreen(device, action, actions);
-      case "calibrationStep": {
-        if (action === "ZERO") return performRezero();
-        if (action === "FILE") return openSaveDialog("ГРАДУИРОВКА", "calibrationStep");
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "calibrationPlan" }));
-        if (action === "START/STOP" || action === "ENTER") {
-          const step = device.calibration.plan[device.calibration.stepIndex];
-          const concentration = device.calibration.standardConcentrations?.[step?.standardIndex - 1];
-          if (!Number.isFinite(concentration)) {
-            return setDevice((d) => ({
-              ...d,
-              screen: "input",
-              inputTarget: "calibrationConcentration",
-              inputBuffer: "",
-              dialogTitle: `КОНЦ. С-${step?.standardIndex ?? 1}`,
-              returnScreen: "calibrationStep",
-            }));
-          }
-          return performCalibrationMeasure();
-        }
-        return;
-      }
-      case "calibrationJournal":
-        return handleCalibrationJournalScreen(device, action, actions);
-      case "calibrationGraph":
-        if (action === "FILE") return openSaveDialog("ГРАДУИРОВКА", "calibrationGraph");
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "calibrationJournal" }));
-        if (action === "ENTER" || action === "DOWN") return setDevice((d) => ({ ...workflowService.startUnknownSampleSeries(d), screen: "calibrationUnknown" }));
-        return;
-      case "calibrationUnknown":
-        if (action === "ZERO") return performRezero();
-        if (action === "FILE") return openSaveDialog("ГРАДУИРОВКА", "calibrationUnknown");
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "calibrationGraph" }));
-        if (action === "ENTER" || action === "START/STOP") return performCalibrationUnknownMeasure();
-        return;
-      case "calibrationUnknownNext":
-        if (action === "FILE") return openSaveDialog("ГРАДУИРОВКА", "calibrationUnknownNext");
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "calibrationGraph" }));
-        if (action === "ENTER" || action === "START/STOP") return nextUnknownSample();
-        return;
-      case "kineticsMenu":
-        return handleKineticsMenuScreen(device, action, actions);
-      case "kineticsRun":
-        return handleKineticsRunScreen(device, action, actions);
-      case "kineticsGraph":
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "kineticsRun" }));
-        return;
-      case "multiwlMain":
-        return handleMultiWlMainScreen(device, action, actions);
-      case "multiwlFormula":
-        return handleMultiWlFormulaScreen(device, action, actions);
-      case "multiwlRun":
-        return handleMultiWlRunScreen(device, action, actions);
-      case "settings":
-        return handleSettingsScreen(device, action, actions);
-      case "settingsStatMode":
-        return handleSettingsStatModeScreen(device, action, actions);
-      case "version":
-        return handleVersionScreen(device, action, actions);
-      default:
-        return;
-    }
+    return routeScreenAction(device, action, actions);
   }, [
     buildCalibrationPlan,
     deleteCalibrationAtCursor,
@@ -561,9 +417,10 @@ export function useDeviceController() {
     remeasureCalibrationAtCursor,
     resetAll,
     showWarning,
+    startCalibrationUnknownSeries,
     startKinetics,
-    stopKinetics,
     startMultiWl,
+    stopKinetics,
     toggleCoefPause,
     toggleMultiWlPause,
   ]);
