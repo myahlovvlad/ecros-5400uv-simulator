@@ -273,6 +273,94 @@ export class WorkflowService {
     return base * factor * dilution;
   }
 
+  startCoefSampleSeries(device) {
+    return {
+      ...device,
+      mode: MODES.QUANT_COEF,
+      taskState: TASK_STATES.RUNNING,
+      quantCoefContext: {
+        ...device.quantCoefContext,
+        currentUnknownReplicate: 0,
+        currentUnknownReplicates: [],
+        paused: false,
+      },
+    };
+  }
+
+  appendCoefReplicate(device, measurement) {
+    const currentUnknownReplicate = (device.quantCoefContext?.currentUnknownReplicate ?? 0) + 1;
+    const concentration = this.calculateCoefConcentration(device, measurement.a);
+    const entry = {
+      sampleNo: device.quantCoefContext?.currentUnknownNo ?? 1,
+      replicateNo: currentUnknownReplicate,
+      concentration,
+      measurement,
+      index: `${device.quantCoefContext?.currentUnknownNo ?? 1}-${currentUnknownReplicate}`,
+    };
+    const currentUnknownReplicates = [...(device.quantCoefContext?.currentUnknownReplicates ?? []), entry];
+    const unknownReplicatesRequired = device.quantCoefContext?.unknownReplicates ?? 1;
+
+    let quantCoefContext = {
+      ...device.quantCoefContext,
+      currentUnknownReplicate,
+      currentUnknownReplicates,
+      paused: false,
+    };
+    let taskState = TASK_STATES.RUNNING;
+
+    if (currentUnknownReplicate >= unknownReplicatesRequired) {
+      const concentrations = currentUnknownReplicates.map((item) => item.concentration).filter((value) => Number.isFinite(value));
+      quantCoefContext = {
+        ...quantCoefContext,
+        results: [
+          ...(device.quantCoefContext?.results ?? []),
+          {
+            sampleNo: device.quantCoefContext?.currentUnknownNo ?? 1,
+            replicates: currentUnknownReplicates,
+            meanConcentration: mean(concentrations),
+            sdConcentration: stddev(concentrations),
+          },
+        ],
+      };
+      taskState = TASK_STATES.WAIT_NEXT_SAMPLE;
+    }
+
+    return {
+      ...device,
+      taskState,
+      quantCoefContext,
+      lastEnergy: measurement.energy,
+      lastComputedA: measurement.a,
+      lastComputedT: measurement.t,
+    };
+  }
+
+  nextCoefSample(device) {
+    return {
+      ...device,
+      taskState: TASK_STATES.READY,
+      quantCoefContext: {
+        ...device.quantCoefContext,
+        currentUnknownNo: (device.quantCoefContext?.currentUnknownNo ?? 1) + 1,
+        currentUnknownReplicate: 0,
+        currentUnknownReplicates: [],
+        paused: false,
+      },
+    };
+  }
+
+  toggleCoefPause(device) {
+    const paused = !device.quantCoefContext?.paused;
+    return {
+      ...device,
+      taskState: paused ? TASK_STATES.PAUSED : TASK_STATES.RUNNING,
+      quantCoefContext: {
+        ...device.quantCoefContext,
+        paused,
+      },
+    };
+  }
+
   startMultiWl(device) {
     return {
       ...device,

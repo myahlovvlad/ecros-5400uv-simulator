@@ -108,6 +108,27 @@ export class DeviceService {
     };
   }
 
+  performQuantCoefMeasure(state) {
+    const measurement = measureSample({
+      sample: state.currentSample,
+      wavelength: state.wavelength,
+      gain: state.gain,
+      e100: state.e100,
+      darkValues: state.darkValues,
+    });
+
+    return {
+      newState: {
+        ...state,
+        lastEnergy: measurement.energy,
+        lastComputedA: measurement.a,
+        lastComputedT: measurement.t,
+      },
+      logEntry: `coef -> ${state.quantCoefContext?.currentUnknownNo ?? 1}`,
+      measurement,
+    };
+  }
+
   performDarkCurrent(state) {
     const values = DARK_VALUES.map((value, index) => addNoise(value + index * 2, 4));
     return {
@@ -186,6 +207,7 @@ export class DeviceService {
         quantB: state.quantB,
         lastA: state.lastComputedA,
         multiwlResults: state.multiwlResults,
+        quantCoefResults: state.quantCoefContext?.results,
       }),
       exportedAt: new Date().toLocaleString(),
     };
@@ -340,7 +362,7 @@ export class DeviceService {
   }
 
   getSaveContext(state) {
-    if (state.screen === "quantCoef") return { group: "КОЭФФИЦИЕНТ", ext: fileExtByGroup("КОЭФФИЦИЕНТ") };
+    if (["quantCoef", "quantCoefPaused", "quantCoefNext"].includes(state.screen)) return { group: "КОЭФФИЦИЕНТ", ext: fileExtByGroup("КОЭФФИЦИЕНТ") };
     if (["kineticsRun", "kineticsGraph", "kineticsMenu"].includes(state.screen)) {
       return { group: "КИНЕТИКА", ext: fileExtByGroup("КИНЕТИКА") };
     }
