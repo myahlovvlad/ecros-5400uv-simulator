@@ -109,6 +109,15 @@ export function useDeviceController() {
     logLine(result.logEntry);
   }, [device, logLine, showWarning]);
 
+  const performCalibrationUnknownMeasure = useCallback(() => {
+    if (device.zeroState !== ZERO_STATES.VALID) return showWarning("ОШИБКА", "НЕТ НУЛЯ", "calibrationUnknown");
+    if (!device.calibration?.equation) return showWarning("ОШИБКА", "НЕТ ГРАФИКА", "calibrationGraph");
+    const result = deviceService.performCalibrationUnknownMeasure(device);
+    const nextState = workflowService.appendCalibrationUnknownReplicate(result.newState, result.measurement);
+    setDevice({ ...nextState, screen: nextState.taskState === TASK_STATES.WAIT_NEXT_SAMPLE ? "calibrationUnknownNext" : "calibrationUnknown" });
+    logLine(result.logEntry);
+  }, [device, logLine, showWarning]);
+
   const performDarkCurrent = useCallback(async () => {
     await setBusy("ТЕМНОВОЙ ТОК", 900);
     const result = deviceService.performDarkCurrent(device);
@@ -142,7 +151,7 @@ export function useDeviceController() {
   const nextCalibrationStep = useCallback(() => {
     setDevice((d) => {
       const nextIndex = findNextPendingStep(d.calibration.plan, d.calibration.stepIndex);
-      if (nextIndex === -1) return workflowService.buildCurveEquation({ ...d, screen: "calibrationGraph" });
+      if (nextIndex === -1) return { ...workflowService.buildCurveEquation(d), screen: "calibrationGraph" };
       return { ...d, calibration: { ...d.calibration, stepIndex: nextIndex }, screen: "calibrationStep" };
     });
   }, []);
@@ -210,6 +219,10 @@ export function useDeviceController() {
     setDevice((d) => workflowService.toggleMultiWlPause(d));
   }, []);
 
+  const nextUnknownSample = useCallback(() => {
+    setDevice((d) => ({ ...workflowService.nextUnknownSample(d), screen: "calibrationUnknown" }));
+  }, []);
+
   useEffect(() => {
     return () => {
       if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
@@ -271,6 +284,18 @@ export function useDeviceController() {
       if (result.error) return showWarning(result.error.title, result.error.body, result.error.returnScreen);
       setDevice((d) => workflowService.invalidateZero({ ...d, ...result.newState }, "WL"));
       logLine(result.logEntry);
+      return;
+    }
+
+    if (device.inputTarget === "calibrationConcentration") {
+      const step = device.calibration.plan[device.calibration.stepIndex];
+      if (!step) return;
+      setDevice((d) => ({
+        ...workflowService.setStandardConcentration(d, step.standardIndex, raw),
+        inputBuffer: "",
+        inputTarget: null,
+        screen: "calibrationStep",
+      }));
       return;
     }
 
@@ -386,13 +411,44 @@ export function useDeviceController() {
         return handleCalibrationSetupParallelsScreen(device, action, actions);
       case "calibrationPlan":
         return handleCalibrationPlanScreen(device, action, actions);
-      case "calibrationStep":
-        return handleCalibrationStepScreen(device, action, actions);
+      case "calibrationStep": {
+        if (action === "ZERO") return performRezero();
+        if (action === "FILE") return openSaveDialog("ГРАДУИРОВКА", "calibrationStep");
+        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "calibrationPlan" }));
+        if (action === "START/STOP" || action === "ENTER") {
+          const step = device.calibration.plan[device.calibration.stepIndex];
+          const concentration = device.calibration.standardConcentrations?.[step?.standardIndex - 1];
+          if (!Number.isFinite(concentration)) {
+            return setDevice((d) => ({
+              ...d,
+              screen: "input",
+              inputTarget: "calibrationConcentration",
+              inputBuffer: "",
+              dialogTitle: `КОНЦ. С-${step?.standardIndex ?? 1}`,
+              returnScreen: "calibrationStep",
+            }));
+          }
+          return performCalibrationMeasure();
+        }
+        return;
+      }
       case "calibrationJournal":
         return handleCalibrationJournalScreen(device, action, actions);
       case "calibrationGraph":
         if (action === "FILE") return openSaveDialog("ГРАДУИРОВКА", "calibrationGraph");
         if (action === "ESC") return setDevice((d) => ({ ...d, screen: "calibrationJournal" }));
+        if (action === "ENTER" || action === "DOWN") return setDevice((d) => ({ ...workflowService.startUnknownSampleSeries(d), screen: "calibrationUnknown" }));
+        return;
+      case "calibrationUnknown":
+        if (action === "ZERO") return performRezero();
+        if (action === "FILE") return openSaveDialog("ГРАДУИРОВКА", "calibrationUnknown");
+        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "calibrationGraph" }));
+        if (action === "ENTER" || action === "START/STOP") return performCalibrationUnknownMeasure();
+        return;
+      case "calibrationUnknownNext":
+        if (action === "FILE") return openSaveDialog("ГРАДУИРОВКА", "calibrationUnknownNext");
+        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "calibrationGraph" }));
+        if (action === "ENTER" || action === "START/STOP") return nextUnknownSample();
         return;
       case "kineticsMenu":
         return handleKineticsMenuScreen(device, action, actions);
@@ -426,10 +482,12 @@ export function useDeviceController() {
     logLine,
     moveCalibrationCursor,
     nextCalibrationStep,
+    nextUnknownSample,
     openFileManager,
     openRenameDialog,
     openSaveDialog,
     performCalibrationMeasure,
+    performCalibrationUnknownMeasure,
     performDarkCurrent,
     performPhotometryMeasure,
     performRezero,
@@ -462,7 +520,7 @@ export function useDeviceController() {
   }, [handleAction]);
 
   useEffect(() => {
-    const bootTimer = setTimeout(() => setDevice((d) => ({ ...d, screen: "diagnostic", fsmState: "SYS_DIАГ" })), BOOT_DELAY_MS);
+    const bootTimer = setTimeout(() => setDevice((d) => ({ ...d, screen: "diagnostic", fsmState: "SYS_DIAG" })), BOOT_DELAY_MS);
     return () => clearTimeout(bootTimer);
   }, []);
 
