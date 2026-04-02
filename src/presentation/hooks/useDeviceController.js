@@ -19,7 +19,6 @@ import {
   handleMultiWlRunScreen,
   handlePhotometryScreen,
   handlePhotometryValueScreen,
-  handleQuantCoefScreen,
   handleQuantMainScreen,
   handleQuantUnitsScreen,
   handleSaveDialogScreen,
@@ -115,6 +114,15 @@ export function useDeviceController() {
     const result = deviceService.performCalibrationUnknownMeasure(device);
     const nextState = workflowService.appendCalibrationUnknownReplicate(result.newState, result.measurement);
     setDevice({ ...nextState, screen: nextState.taskState === TASK_STATES.WAIT_NEXT_SAMPLE ? "calibrationUnknownNext" : "calibrationUnknown" });
+    logLine(result.logEntry);
+  }, [device, logLine, showWarning]);
+
+  const performQuantCoefMeasure = useCallback(() => {
+    if (device.zeroState !== ZERO_STATES.VALID) return showWarning("ОШИБКА", "НЕТ НУЛЯ", "quantCoef");
+    const activeState = device.taskState === TASK_STATES.RUNNING ? device : workflowService.startCoefSampleSeries(device);
+    const result = deviceService.performQuantCoefMeasure(activeState);
+    const nextState = workflowService.appendCoefReplicate(result.newState, result.measurement);
+    setDevice({ ...nextState, screen: nextState.taskState === TASK_STATES.WAIT_NEXT_SAMPLE ? "quantCoefNext" : "quantCoef" });
     logLine(result.logEntry);
   }, [device, logLine, showWarning]);
 
@@ -223,6 +231,14 @@ export function useDeviceController() {
     setDevice((d) => ({ ...workflowService.nextUnknownSample(d), screen: "calibrationUnknown" }));
   }, []);
 
+  const nextCoefSample = useCallback(() => {
+    setDevice((d) => ({ ...workflowService.nextCoefSample(d), screen: "quantCoef" }));
+  }, []);
+
+  const toggleCoefPause = useCallback(() => {
+    setDevice((d) => ({ ...workflowService.toggleCoefPause(d), screen: d.quantCoefContext?.paused ? "quantCoef" : "quantCoefPaused" }));
+  }, []);
+
   useEffect(() => {
     return () => {
       if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
@@ -303,6 +319,21 @@ export function useDeviceController() {
       const result = deviceService.setQuantCoefficient(device, device.inputTarget === "quantK" ? "K" : "B", raw);
       if (result.error) return showWarning(result.error.title, result.error.body, "quantCoef");
       setDevice(result.newState);
+      return;
+    }
+
+    if (device.inputTarget === "quantCoefReplicates") {
+      const count = Math.max(1, Math.min(9, Math.round(raw || 1)));
+      setDevice((d) => ({
+        ...d,
+        quantCoefContext: {
+          ...d.quantCoefContext,
+          unknownReplicates: count,
+        },
+        inputBuffer: "",
+        inputTarget: null,
+        screen: "quantCoef",
+      }));
       return;
     }
 
@@ -403,8 +434,41 @@ export function useDeviceController() {
         return handleQuantMainScreen(device, action, actions);
       case "quantUnits":
         return handleQuantUnitsScreen(device, action, actions);
-      case "quantCoef":
-        return handleQuantCoefScreen(device, action, actions);
+      case "quantCoef": {
+        if (action === "ZERO") return performRezero();
+        if (action === "GOTOλ") {
+          return setDevice((d) => ({
+            ...d,
+            screen: "input",
+            inputTarget: "wavelength",
+            inputBuffer: `${d.wavelength.toFixed(1)}`,
+            dialogTitle: "ВВЕДИТЕ ЛЯМ, НМ",
+            returnScreen: "quantCoef",
+          }));
+        }
+        if (action === "SET") return showWarning("РЕДАКТИР.", "1=К 2=Б 3=N", "quantCoef");
+        if (action === "1") return setDevice((d) => ({ ...d, screen: "input", inputTarget: "quantK", inputBuffer: String(d.quantK), dialogTitle: "ВВЕДИТЕ К", returnScreen: "quantCoef" }));
+        if (action === "2") return setDevice((d) => ({ ...d, screen: "input", inputTarget: "quantB", inputBuffer: String(d.quantB), dialogTitle: "ВВЕДИТЕ Б", returnScreen: "quantCoef" }));
+        if (action === "3") return setDevice((d) => ({ ...d, screen: "input", inputTarget: "quantCoefReplicates", inputBuffer: String(d.quantCoefContext?.unknownReplicates ?? 1), dialogTitle: "ПОВТ. ПРОБ", returnScreen: "quantCoef" }));
+        if (action === "FILE") return openSaveDialog("КОЭФФИЦИЕНТ", "quantCoef");
+        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "quantMain", taskState: TASK_STATES.IDLE }));
+        if (action === "START/STOP") {
+          if (device.taskState === TASK_STATES.RUNNING && (device.quantCoefContext?.currentUnknownReplicate ?? 0) > 0) return toggleCoefPause();
+          return performQuantCoefMeasure();
+        }
+        if (action === "ENTER") return performQuantCoefMeasure();
+        return;
+      }
+      case "quantCoefPaused":
+        if (action === "START/STOP") return toggleCoefPause();
+        if (action === "FILE") return openSaveDialog("КОЭФФИЦИЕНТ", "quantCoefPaused");
+        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "quantCoef" }));
+        return;
+      case "quantCoefNext":
+        if (action === "START/STOP" || action === "ENTER") return nextCoefSample();
+        if (action === "FILE") return openSaveDialog("КОЭФФИЦИЕНТ", "quantCoefNext");
+        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "quantCoef", taskState: TASK_STATES.READY }));
+        return;
       case "calibrationSetupStandards":
         return handleCalibrationSetupStandardsScreen(device, action, actions);
       case "calibrationSetupParallels":
@@ -482,6 +546,7 @@ export function useDeviceController() {
     logLine,
     moveCalibrationCursor,
     nextCalibrationStep,
+    nextCoefSample,
     nextUnknownSample,
     openFileManager,
     openRenameDialog,
@@ -490,6 +555,7 @@ export function useDeviceController() {
     performCalibrationUnknownMeasure,
     performDarkCurrent,
     performPhotometryMeasure,
+    performQuantCoefMeasure,
     performRezero,
     performWavelengthCalibration,
     remeasureCalibrationAtCursor,
@@ -498,6 +564,7 @@ export function useDeviceController() {
     startKinetics,
     stopKinetics,
     startMultiWl,
+    toggleCoefPause,
     toggleMultiWlPause,
   ]);
 

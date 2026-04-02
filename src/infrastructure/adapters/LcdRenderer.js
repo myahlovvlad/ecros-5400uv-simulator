@@ -171,14 +171,40 @@ export function getLcdRows(device) {
   }
 
   if (device.screen === "quantCoef") {
-    const concentration = device.quantK * device.lastComputedA + device.quantB;
+    const concentration = device.quantCoefContext?.currentUnknownReplicates?.at(-1)?.concentration ?? (device.quantK * device.lastComputedA + device.quantB);
     push("КОЭФФИЦИЕНТ", true);
-    push(`${device.wavelength.toFixed(1)} НМ`);
-    push(`${device.lastComputedA.toFixed(3)} А`);
-    push(`${concentration.toFixed(3)} ${UNITS[device.unitsIndex]}`);
-    push(`К=${device.quantK.toFixed(3)}`);
-    push(`Б=${device.quantB.toFixed(3)}`);
-    push("START/ФАЙЛ/ESC");
+    push(`ПРОБА ${device.quantCoefContext?.currentUnknownNo ?? 1}`);
+    push(`ПОВТ ${device.quantCoefContext?.currentUnknownReplicate ?? 0}/${device.quantCoefContext?.unknownReplicates ?? 1}`);
+    push(`A=${device.lastComputedA.toFixed(3)}`);
+    push(`C=${Number(concentration).toFixed(3)} ${UNITS[device.unitsIndex]}`.slice(0, 20));
+    push(`К=${device.quantK.toFixed(3)} Б=${device.quantB.toFixed(3)}`.slice(0, 20));
+    push("СТАРТ=ПАУЗ/ПУСК");
+    push("ВВОД=ИЗМЕРИТЬ");
+    return rows;
+  }
+
+  if (device.screen === "quantCoefPaused") {
+    const last = device.quantCoefContext?.currentUnknownReplicates?.at(-1);
+    push("КОЭФФ. ПАУЗА", true);
+    push(`ПРОБА ${device.quantCoefContext?.currentUnknownNo ?? 1}`);
+    push(`ПОВТ ${device.quantCoefContext?.currentUnknownReplicate ?? 0}/${device.quantCoefContext?.unknownReplicates ?? 1}`);
+    push(`A=${device.lastComputedA.toFixed(3)}`);
+    push(`C=${Number(last?.concentration ?? 0).toFixed(3)} ${UNITS[device.unitsIndex]}`.slice(0, 20));
+    push("СТАРТ - ПРОДОЛЖ.");
+    push("ФАЙЛ - СОХРАН.");
+    push("ESC - НАЗАД");
+    return rows;
+  }
+
+  if (device.screen === "quantCoefNext") {
+    const last = device.quantCoefContext?.results?.at(-1);
+    push("СЛЕД. РАСТВОР", true);
+    push(`ПРОБА ${last?.sampleNo ?? device.quantCoefContext?.currentUnknownNo ?? 1}`);
+    push(`Cср=${Number(last?.meanConcentration ?? 0).toFixed(3)} ${UNITS[device.unitsIndex]}`.slice(0, 20));
+    push(`SD=${Number(last?.sdConcentration ?? 0).toFixed(3)}`.slice(0, 20));
+    push("УСТ. СЛЕД. Р-Р");
+    push("START/ВВОД");
+    push("ESC - НАЗАД");
     return rows;
   }
 

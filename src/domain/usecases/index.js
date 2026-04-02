@@ -138,6 +138,7 @@ export function buildUsbExportPreview({
   lastA,
   multiwlResults,
   calibrationUnknownResults,
+  quantCoefResults,
 }) {
   const lines = ["USB_DEVICE=USB1", `GROUP=${group}`, `FILE=${name}${ext}`, "EXPORT_FORMAT=csv", "---"];
 
@@ -179,9 +180,15 @@ export function buildUsbExportPreview({
   }
 
   if (group === "КОЭФФИЦИЕНТ") {
-    const result = quantK * lastA + quantB;
     lines.push("wavelength_nm,K,B,A,result");
-    lines.push(`${wavelength.toFixed(1)},${quantK.toFixed(6)},${quantB.toFixed(6)},${lastA.toFixed(6)},${result.toFixed(6)}`);
+    lines.push(`${wavelength.toFixed(1)},${quantK.toFixed(6)},${quantB.toFixed(6)},${lastA.toFixed(6)},${(quantK * lastA + quantB).toFixed(6)}`);
+    if ((quantCoefResults ?? []).length) {
+      lines.push("---");
+      lines.push("sample_no,replicate_count,mean_concentration,sd_concentration");
+      quantCoefResults.forEach((sample) => {
+        lines.push(`${sample.sampleNo},${sample.replicates.length},${sample.meanConcentration?.toFixed(6) ?? ""},${sample.sdConcentration?.toFixed(6) ?? ""}`);
+      });
+    }
     return lines.join("\n");
   }
 
@@ -292,7 +299,12 @@ export function initialDevice() {
       resultCursor: 0,
     },
     quantCoefContext: {
+      unknownReplicates: 3,
       currentUnknownNo: 1,
+      currentUnknownReplicate: 0,
+      currentUnknownReplicates: [],
+      results: [],
+      paused: false,
       correctionFactors: { dilution: 1, sampleMass: null, finalVolume: null, conversionFactor: 1 },
     },
     multiwl: {
