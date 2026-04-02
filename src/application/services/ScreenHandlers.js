@@ -3,9 +3,11 @@ import {
   FILE_GROUPS,
   MENU_KINETICS,
   MENU_MAIN,
+  MENU_MULTIWL,
   MENU_PHOTOMETRY_VALUE,
   MENU_QUANT,
   MENU_SETTINGS,
+  STAT_MODES,
   UNITS,
 } from "../../domain/constants/index.js";
 import { buildCalibrationPlan, getCalibrationResultIndexes } from "../../domain/usecases/index.js";
@@ -22,10 +24,11 @@ export function handleMainScreen(state, action, actions) {
   if (action === "FILE") return openFileManager(FILE_GROUPS[state.fileRootIndex], "browse", "main");
 
   if (action === "ENTER") {
-    if (state.mainIndex === 0) return setDevice((d) => ({ ...d, screen: "photometry" }));
-    if (state.mainIndex === 1) return setDevice((d) => ({ ...d, screen: "quantMain" }));
-    if (state.mainIndex === 2) return setDevice((d) => ({ ...d, screen: "kineticsMenu" }));
-    if (state.mainIndex === 3) return setDevice((d) => ({ ...d, screen: "settings" }));
+    if (state.mainIndex === 0) return setDevice((d) => ({ ...d, screen: "photometry", mode: "PHOTO", fsmState: "PHOTO_MAIN" }));
+    if (state.mainIndex === 1) return setDevice((d) => ({ ...d, screen: "quantMain", mode: "QUANT_COEF", fsmState: "QUANT_MAIN" }));
+    if (state.mainIndex === 2) return setDevice((d) => ({ ...d, screen: "kineticsMenu", mode: "KINETIC", fsmState: "KINETIC_MAIN" }));
+    if (state.mainIndex === 3) return setDevice((d) => ({ ...d, screen: "multiwlMain", mode: "MULTIWL", fsmState: "MULTIWL_MAIN" }));
+    if (state.mainIndex === 4) return setDevice((d) => ({ ...d, screen: "settings", mode: "SETTINGS", fsmState: "SETTINGS_MAIN" }));
   }
 }
 
@@ -94,7 +97,7 @@ export function handlePhotometryScreen(state, action, actions) {
     }));
   }
   if (action === "ZERO") return performRezero();
-  if (action === "START/STOP") return performPhotometryMeasure();
+  if (action === "START/STOP" || action === "ENTER") return performPhotometryMeasure();
   if (action === "SET") return setDevice((d) => ({ ...d, screen: "photometryValue" }));
   if (action === "CLEAR") {
     return setDevice((d) => ({ ...d, measurements: d.measurements.slice(0, -1), measurementCursor: Math.max(0, d.measurementCursor - 1) }));
@@ -127,8 +130,8 @@ export function handleQuantMainScreen(state, action, actions) {
   if (action === "DOWN") return setDevice((d) => ({ ...d, quantIndex: (d.quantIndex + 1) % MENU_QUANT.length }));
   if (action === "FILE") return openFileManager("ГРАДУИРОВКА", "browse", "quantMain");
   if (action === "ENTER") {
-    if (state.quantIndex === 0) return setDevice((d) => ({ ...d, screen: "calibrationSetupStandards" }));
-    if (state.quantIndex === 1) return setDevice((d) => ({ ...d, screen: "quantCoef" }));
+    if (state.quantIndex === 0) return setDevice((d) => ({ ...d, screen: "calibrationSetupStandards", mode: "QUANT_CURVE", fsmState: "QC_METHOD_EDIT" }));
+    if (state.quantIndex === 1) return setDevice((d) => ({ ...d, screen: "quantCoef", mode: "QUANT_COEF", fsmState: "QK_METHOD_EDIT" }));
     if (state.quantIndex === 2) return setDevice((d) => ({ ...d, screen: "quantUnits" }));
   }
   if (action === "ESC") return setDevice((d) => ({ ...d, screen: "main" }));
@@ -145,7 +148,7 @@ export function handleQuantUnitsScreen(state, action, actions) {
 export function handleQuantCoefScreen(state, action, actions) {
   const { setDevice, performPhotometryMeasure, performRezero, openSaveDialog, showWarning } = actions;
 
-  if (action === "START/STOP") return performPhotometryMeasure();
+  if (action === "START/STOP" || action === "ENTER") return performPhotometryMeasure();
   if (action === "SET") return showWarning("РЕДАКТИРОВАНИЕ", "1=К 2=Б", "quantCoef");
   if (action === "1") {
     return setDevice((d) => ({ ...d, screen: "input", inputTarget: "quantK", inputBuffer: String(d.quantK), dialogTitle: "ВВЕДИТЕ К", returnScreen: "quantCoef" }));
@@ -209,7 +212,7 @@ export function handleCalibrationStepScreen(state, action, actions) {
   const { setDevice, performRezero, performCalibrationMeasure, openSaveDialog } = actions;
 
   if (action === "ZERO") return performRezero();
-  if (action === "START/STOP") return performCalibrationMeasure();
+  if (action === "START/STOP" || action === "ENTER") return performCalibrationMeasure();
   if (action === "FILE") return openSaveDialog("ГРАДУИРОВКА", "calibrationStep");
   if (action === "ESC") return setDevice((d) => ({ ...d, screen: "calibrationPlan" }));
 }
@@ -270,20 +273,74 @@ export function handleKineticsRunScreen(state, action, actions) {
   if (action === "ESC") return stopKinetics();
 }
 
+export function handleMultiWlMainScreen(state, action, actions) {
+  const { setDevice, performRezero, openFileManager, startMultiWl } = actions;
+
+  if (action === "UP") return setDevice((d) => ({ ...d, multiwlIndex: (d.multiwlIndex + MENU_MULTIWL.length - 1) % MENU_MULTIWL.length }));
+  if (action === "DOWN") return setDevice((d) => ({ ...d, multiwlIndex: (d.multiwlIndex + 1) % MENU_MULTIWL.length }));
+  if (action === "ENTER") {
+    if (state.multiwlIndex === 0) {
+      return setDevice((d) => ({
+        ...d,
+        screen: "input",
+        inputTarget: "multiwlCount",
+        inputBuffer: String(d.multiwl.wlCount),
+        dialogTitle: "ЧИСЛО ЛЯМБДА",
+        returnScreen: "multiwlMain",
+      }));
+    }
+    if (state.multiwlIndex === 1) return setDevice((d) => ({ ...d, screen: "multiwlFormula" }));
+    if (state.multiwlIndex === 2) return startMultiWl();
+  }
+  if (action === "ZERO") return performRezero();
+  if (action === "FILE") return openFileManager("МНОГОВОЛН", "browse", "multiwlMain");
+  if (action === "ESC") return setDevice((d) => ({ ...d, screen: "main" }));
+}
+
+export function handleMultiWlFormulaScreen(state, action, actions) {
+  const { setDevice } = actions;
+
+  if (action === "UP") return setDevice((d) => ({ ...d, multiwlFormulaIndex: (d.multiwlFormulaIndex + 2) % 3 }));
+  if (action === "DOWN") return setDevice((d) => ({ ...d, multiwlFormulaIndex: (d.multiwlFormulaIndex + 1) % 3 }));
+  if (action === "ENTER") {
+    return setDevice((d) => ({ ...d, multiwl: { ...d.multiwl, formula: ["RAW", "DIFF", "RATIO"][d.multiwlFormulaIndex] }, screen: "multiwlMain" }));
+  }
+  if (action === "ESC") return setDevice((d) => ({ ...d, screen: "multiwlMain" }));
+}
+
+export function handleMultiWlRunScreen(state, action, actions) {
+  const { setDevice, toggleMultiWlPause, openSaveDialog } = actions;
+
+  if (action === "START/STOP") return toggleMultiWlPause();
+  if (action === "FILE") return openSaveDialog("МНОГОВОЛН", "multiwlRun");
+  if (action === "ESC") return setDevice((d) => ({ ...d, screen: "multiwlMain" }));
+}
+
 export function handleSettingsScreen(state, action, actions) {
   const { setDevice, performDarkCurrent, performWavelengthCalibration, resetAll } = actions;
 
   if (action === "UP") return setDevice((d) => ({ ...d, settingsIndex: (d.settingsIndex + MENU_SETTINGS.length - 1) % MENU_SETTINGS.length }));
   if (action === "DOWN") return setDevice((d) => ({ ...d, settingsIndex: (d.settingsIndex + 1) % MENU_SETTINGS.length }));
   if (action === "ENTER") {
-    if (state.settingsIndex === 0) return setDevice((d) => ({ ...d, d2Lamp: !d.d2Lamp }));
-    if (state.settingsIndex === 1) return setDevice((d) => ({ ...d, wLamp: !d.wLamp }));
-    if (state.settingsIndex === 2) return performDarkCurrent();
-    if (state.settingsIndex === 3) return performWavelengthCalibration();
-    if (state.settingsIndex === 4) return setDevice((d) => ({ ...d, screen: "version" }));
-    if (state.settingsIndex === 5) return resetAll();
+    if (state.settingsIndex === 0) return setDevice((d) => ({ ...d, screen: "settingsStatMode" }));
+    if (state.settingsIndex === 1) return setDevice((d) => ({ ...d, d2Lamp: !d.d2Lamp }));
+    if (state.settingsIndex === 2) return setDevice((d) => ({ ...d, wLamp: !d.wLamp }));
+    if (state.settingsIndex === 3) return performDarkCurrent();
+    if (state.settingsIndex === 4) return performWavelengthCalibration();
+    if (state.settingsIndex === 5) return setDevice((d) => ({ ...d, screen: "version" }));
+    if (state.settingsIndex === 6) return resetAll();
   }
   if (action === "ESC") return setDevice((d) => ({ ...d, screen: "main" }));
+}
+
+export function handleSettingsStatModeScreen(state, action, actions) {
+  const { setDevice } = actions;
+
+  if (action === "UP") return setDevice((d) => ({ ...d, statisticsModeIndex: (d.statisticsModeIndex + STAT_MODES.length - 1) % STAT_MODES.length }));
+  if (action === "DOWN") return setDevice((d) => ({ ...d, statisticsModeIndex: (d.statisticsModeIndex + 1) % STAT_MODES.length }));
+  if (action === "ENTER" || action === "ESC") {
+    return setDevice((d) => ({ ...d, statisticsMode: STAT_MODES[d.statisticsModeIndex], screen: "settings" }));
+  }
 }
 
 export function handleVersionScreen(state, action, actions) {
@@ -304,7 +361,11 @@ export function handleWarmupScreen(state, action, actions) {
 export function handleInputScreen(state, action, actions) {
   const { setDevice, handleInputAction } = actions;
   if (action === "ESC") {
+    if (state.inputBuffer) return setDevice((d) => ({ ...d, inputBuffer: d.inputBuffer.slice(0, -1) }));
     return setDevice((d) => ({ ...d, inputBuffer: "", inputTarget: null, screen: d.returnScreen || d.previousScreen || "main" }));
+  }
+  if (action === "CLEAR") {
+    return setDevice((d) => ({ ...d, inputBuffer: "" }));
   }
   return handleInputAction(action);
 }
@@ -312,7 +373,11 @@ export function handleInputScreen(state, action, actions) {
 export function handleSaveDialogScreen(state, action, actions) {
   const { setDevice, handleInputAction } = actions;
   if (action === "ESC") {
+    if (state.inputBuffer) return setDevice((d) => ({ ...d, inputBuffer: d.inputBuffer.slice(0, -1) }));
     return setDevice((d) => ({ ...d, inputBuffer: "", inputTarget: null, screen: d.returnScreen || d.previousScreen || "main" }));
+  }
+  if (action === "CLEAR") {
+    return setDevice((d) => ({ ...d, inputBuffer: "" }));
   }
   return handleInputAction(action);
 }

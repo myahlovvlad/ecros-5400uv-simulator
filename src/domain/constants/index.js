@@ -50,14 +50,17 @@ export const CLI_COMMANDS = [
   "diag",
 ];
 
-export const MENU_MAIN = ["ФОТОМЕТРИЯ", "КОЛИЧ. АНАЛИЗ", "КИНЕТИКА", "НАСТРОЙКИ"];
+export const MENU_MAIN = ["ФОТОМЕТРИЯ", "КОЛИЧ. АНАЛИЗ", "КИНЕТИКА", "МНОГОВ. АНАЛИЗ", "НАСТРОЙКИ"];
 export const MENU_PHOTOMETRY_VALUE = ["А", "%Т", "ЭНЕРГИЯ"];
 export const MENU_QUANT = ["НОВАЯ ГРАДУИР.", "КОЭФФИЦИЕНТ", "ЕДИНИЦЫ"];
 export const MENU_KINETICS = ["ВЕЛИЧИНА", "ВЕРХ. ГРАНИЦА", "НИЖ. ГРАНИЦА", "ОБЩЕЕ ВРЕМЯ", "ПУСК"];
-export const MENU_SETTINGS = ["Д2-ЛАМПА", "В-ЛАМПА", "ТЕМНОВОЙ ТОК", "КАЛИБР. ЛЯМ", "ВЕРСИЯ", "СБРОС"];
-export const FILE_GROUPS = ["ФОТОМЕТРИЯ", "ГРАДУИРОВКА", "КОЭФФИЦИЕНТ", "КИНЕТИКА"];
+export const MENU_MULTIWL = ["ЧИСЛО ЛЯМБДА", "ФОРМУЛА", "ПУСК"];
+export const MENU_SETTINGS = ["СТАТИСТИКА", "Д2-ЛАМПА", "В-ЛАМПА", "ТЕМНОВОЙ ТОК", "КАЛИБР. ЛЯМ", "ВЕРСИЯ", "СБРОС"];
+export const FILE_GROUPS = ["ФОТОМЕТРИЯ", "ГРАДУИРОВКА", "КОЭФФИЦИЕНТ", "КИНЕТИКА", "МНОГОВОЛН"];
 export const FILE_ACTIONS = ["ОТКРЫТЬ", "ПЕРЕИМЕНОВАТЬ", "УДАЛИТЬ", "ЭКСПОРТ"];
 export const UNITS = ["МКГ/Л", "МГ/Л", "Г/Л", "МЛ/Л", "МОЛЬ/Л", "МГ/КГ", "%", "ТСУ"];
+export const STAT_MODES = ["СРЕДНЕЕ", "SD", "ДИ"];
+export const MULTIWL_FORMULAS = ["RAW", "DIFF", "RATIO"];
 
 export const SAMPLE_OPTIONS = [
   { value: "reference", label: "ЭТАЛОН" },
@@ -72,6 +75,7 @@ export const FILE_EXTENSIONS = {
   ГРАДУИРОВКА: ".std",
   КОЭФФИЦИЕНТ: ".cof",
   КИНЕТИКА: ".kin",
+  МНОГОВОЛН: ".mwl",
 };
 
 export const VALID_FILE_RE = /^[A-Za-zА-Яа-я0-9 _.-]+$/;

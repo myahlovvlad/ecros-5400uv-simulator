@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CliService } from "../../application/services/CliService.js";
 import { DeviceService } from "../../application/services/DeviceService.js";
+import { WorkflowService } from "../../application/services/WorkflowService.js";
 import {
   handleCalibrationJournalScreen,
   handleCalibrationPlanScreen,
@@ -13,6 +14,9 @@ import {
   handleKineticsMenuScreen,
   handleKineticsRunScreen,
   handleMainScreen,
+  handleMultiWlFormulaScreen,
+  handleMultiWlMainScreen,
+  handleMultiWlRunScreen,
   handlePhotometryScreen,
   handlePhotometryValueScreen,
   handleQuantCoefScreen,
@@ -20,6 +24,7 @@ import {
   handleQuantUnitsScreen,
   handleSaveDialogScreen,
   handleSettingsScreen,
+  handleSettingsStatModeScreen,
   handleVersionScreen,
   handleWarningScreen,
   handleWarmupScreen,
@@ -36,9 +41,11 @@ import {
   measureSample,
   runSelfTests,
 } from "../../domain/usecases/index.js";
+import { TASK_STATES, ZERO_STATES } from "../../domain/entities/workflowTypes.js";
 
 const deviceService = new DeviceService();
 const cliService = new CliService();
+const workflowService = new WorkflowService();
 
 export function useDeviceController() {
   const [device, setDevice] = useState(initialDevice);
@@ -79,24 +86,28 @@ export function useDeviceController() {
   }, []);
 
   const performRezero = useCallback(async () => {
+    setDevice((d) => ({ ...d, zeroState: ZERO_STATES.RUNNING, taskState: TASK_STATES.ZERO_RUNNING }));
     await setBusy("КАЛИБРОВКА НОЛЬ", 700);
     const result = deviceService.performRezero(device);
-    setDevice(result.newState);
+    setDevice(workflowService.completeZero(result.newState));
     logLine(result.logEntry);
     logLine("gain -> 1");
   }, [device, logLine, setBusy]);
 
   const performPhotometryMeasure = useCallback(() => {
+    if (device.zeroState !== ZERO_STATES.VALID) return showWarning("ОШИБКА", "НЕТ НУЛЯ", device.screen);
     const result = deviceService.performPhotometryMeasure(device);
-    setDevice(result.newState);
+    const nextState = workflowService.appendPhotoReplicate(result.newState, result.measurement);
+    setDevice(nextState);
     logLine(result.logEntry);
-  }, [device, logLine]);
+  }, [device, logLine, showWarning]);
 
   const performCalibrationMeasure = useCallback(() => {
+    if (device.zeroState !== ZERO_STATES.VALID) return showWarning("ОШИБКА", "НЕТ НУЛЯ", device.screen);
     const result = deviceService.performCalibrationMeasure(device);
     setDevice(result.newState);
     logLine(result.logEntry);
-  }, [device, logLine]);
+  }, [device, logLine, showWarning]);
 
   const performDarkCurrent = useCallback(async () => {
     await setBusy("ТЕМНОВОЙ ТОК", 900);
@@ -131,7 +142,7 @@ export function useDeviceController() {
   const nextCalibrationStep = useCallback(() => {
     setDevice((d) => {
       const nextIndex = findNextPendingStep(d.calibration.plan, d.calibration.stepIndex);
-      if (nextIndex === -1) return { ...d, screen: "calibrationGraph" };
+      if (nextIndex === -1) return workflowService.buildCurveEquation({ ...d, screen: "calibrationGraph" });
       return { ...d, calibration: { ...d.calibration, stepIndex: nextIndex }, screen: "calibrationStep" };
     });
   }, []);
@@ -153,7 +164,7 @@ export function useDeviceController() {
 
   const startKinetics = useCallback(() => {
     if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
-    setDevice((d) => ({ ...d, kineticPoints: [], screen: "kineticsRun" }));
+    setDevice((d) => ({ ...d, kineticPoints: [], screen: "kineticsRun", taskState: TASK_STATES.RUNNING }));
 
     const startedAt = Date.now();
     kineticTimerRef.current = setInterval(() => {
@@ -188,7 +199,15 @@ export function useDeviceController() {
   const stopKinetics = useCallback(() => {
     if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
     kineticTimerRef.current = null;
-    setDevice((d) => ({ ...d, screen: "kineticsMenu" }));
+    setDevice((d) => ({ ...d, screen: "kineticsMenu", taskState: TASK_STATES.IDLE }));
+  }, []);
+
+  const startMultiWl = useCallback(() => {
+    setDevice((d) => workflowService.runMultiWlMeasurement(workflowService.startMultiWl({ ...d, screen: "multiwlRun" })));
+  }, []);
+
+  const toggleMultiWlPause = useCallback(() => {
+    setDevice((d) => workflowService.toggleMultiWlPause(d));
   }, []);
 
   useEffect(() => {
@@ -239,7 +258,7 @@ export function useDeviceController() {
     }
 
     if (action === "CLEAR") {
-      setDevice((d) => ({ ...d, inputBuffer: d.inputBuffer.slice(0, -1) }));
+      setDevice((d) => ({ ...d, inputBuffer: "" }));
       return;
     }
 
@@ -250,7 +269,7 @@ export function useDeviceController() {
     if (device.inputTarget === "wavelength") {
       const result = deviceService.setWavelength(device, raw);
       if (result.error) return showWarning(result.error.title, result.error.body, result.error.returnScreen);
-      setDevice(result.newState);
+      setDevice((d) => workflowService.invalidateZero({ ...d, ...result.newState }, "WL"));
       logLine(result.logEntry);
       return;
     }
@@ -267,6 +286,22 @@ export function useDeviceController() {
       const result = deviceService.setKineticParameter(device, typeMap[device.inputTarget], raw);
       if (result.error) return showWarning(result.error.title, result.error.body, "kineticsMenu");
       setDevice(result.newState);
+      return;
+    }
+
+    if (device.inputTarget === "multiwlCount") {
+      const wlCount = Math.max(1, Math.min(4, Math.round(raw || 1)));
+      setDevice((d) => ({
+        ...d,
+        multiwl: {
+          ...d.multiwl,
+          wlCount,
+          wavelengths: d.multiwl.wavelengths.slice(0, wlCount),
+        },
+        inputBuffer: "",
+        inputTarget: null,
+        screen: "multiwlMain",
+      }));
       return;
     }
 
@@ -299,6 +334,8 @@ export function useDeviceController() {
       performWavelengthCalibration,
       startKinetics,
       stopKinetics,
+      startMultiWl,
+      toggleMultiWlPause,
       moveCalibrationCursor,
       nextCalibrationStep,
       remeasureCalibrationAtCursor,
@@ -364,8 +401,16 @@ export function useDeviceController() {
       case "kineticsGraph":
         if (action === "ESC") return setDevice((d) => ({ ...d, screen: "kineticsRun" }));
         return;
+      case "multiwlMain":
+        return handleMultiWlMainScreen(device, action, actions);
+      case "multiwlFormula":
+        return handleMultiWlFormulaScreen(device, action, actions);
+      case "multiwlRun":
+        return handleMultiWlRunScreen(device, action, actions);
       case "settings":
         return handleSettingsScreen(device, action, actions);
+      case "settingsStatMode":
+        return handleSettingsStatModeScreen(device, action, actions);
       case "version":
         return handleVersionScreen(device, action, actions);
       default:
@@ -394,6 +439,8 @@ export function useDeviceController() {
     showWarning,
     startKinetics,
     stopKinetics,
+    startMultiWl,
+    toggleMultiWlPause,
   ]);
 
   useEffect(() => {
@@ -415,14 +462,14 @@ export function useDeviceController() {
   }, [handleAction]);
 
   useEffect(() => {
-    const bootTimer = setTimeout(() => setDevice((d) => ({ ...d, screen: "diagnostic" })), BOOT_DELAY_MS);
+    const bootTimer = setTimeout(() => setDevice((d) => ({ ...d, screen: "diagnostic", fsmState: "SYS_DIАГ" })), BOOT_DELAY_MS);
     return () => clearTimeout(bootTimer);
   }, []);
 
   useEffect(() => {
     if (device.screen !== "diagnostic") return undefined;
     if (device.diagIndex >= 7) {
-      const timer = setTimeout(() => setDevice((d) => ({ ...d, screen: "warmup" })), DIAG_COMPLETE_DELAY_MS);
+      const timer = setTimeout(() => setDevice((d) => ({ ...d, screen: "warmup", fsmState: "SYS_WARMUP" })), DIAG_COMPLETE_DELAY_MS);
       return () => clearTimeout(timer);
     }
 
@@ -435,7 +482,7 @@ export function useDeviceController() {
 
     const timer = setTimeout(() => {
       setDevice((d) => {
-        if (d.warmupRemaining <= 1) return { ...d, screen: "main", warmupRemaining: 0 };
+        if (d.warmupRemaining <= 1) return { ...d, screen: "main", fsmState: "NAV_MAIN", warmupRemaining: 0 };
         return { ...d, warmupRemaining: d.warmupRemaining - 1 };
       });
     }, WARMUP_STEP_MS);
@@ -461,6 +508,8 @@ export function useDeviceController() {
     performWavelengthCalibration,
     startKinetics,
     stopKinetics,
+    startMultiWl,
+    toggleMultiWlPause,
     openFileManager,
     openSaveDialog,
     deleteFile,
