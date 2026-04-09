@@ -11,8 +11,8 @@ const DeviceContext = createContext(null);
 /**
  * Провайдер контекста устройства
  */
-export function DeviceProvider({ children }) {
-  const deviceController = useDeviceController();
+export function DeviceProvider({ children, initialDeviceState = null }) {
+  const deviceController = useDeviceController(initialDeviceState);
 
   return (
     <DeviceContext.Provider value={deviceController}>

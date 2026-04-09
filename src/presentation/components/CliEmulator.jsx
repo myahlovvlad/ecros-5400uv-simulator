@@ -9,9 +9,15 @@ export function CliEmulator({ logLines, onExecute }) {
 
   return (
     <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-lg font-semibold">CLI-эмулятор</h2>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">CLI-эмулятор</h2>
+          <p className="text-sm text-zinc-500">Команды отображаются в журнале с префиксом <code>&gt;</code>, ответы приходят ниже.</p>
+        </div>
+      </div>
+
       <div className="mb-3 rounded-2xl bg-zinc-950 p-3 font-mono text-xs text-emerald-300">
-        <div className="mb-2 h-[260px] overflow-auto whitespace-pre-wrap break-words">
+        <div className="mb-2 h-[340px] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-zinc-800 bg-black/20 p-3">
           {logLines.map((line, index) => <div key={`${line}-${index}`}>{line || " "}</div>)}
         </div>
         <div className="flex gap-2">
@@ -27,6 +33,7 @@ export function CliEmulator({ logLines, onExecute }) {
           </button>
         </div>
       </div>
+
       <div className="flex flex-wrap gap-2 text-xs">
         {QUICK_COMMANDS.map((command) => (
           <button

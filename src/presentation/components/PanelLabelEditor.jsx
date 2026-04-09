@@ -1,6 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { PANEL_LABEL_DEFAULTS, PANEL_LABEL_FIELDS } from "./InstrumentPanel.jsx";
 
+const DIGIT_EDITOR_LAYOUT = [
+  ["digit1", "digit2", "digit3"],
+  ["digit4", "digit5", "digit6"],
+  ["digit7", "digit8", "digit9"],
+  ["digit0", "digitDot", "digitMinus"],
+];
+
 function escapeCString(value) {
   return String(value)
     .replace(/\\/g, "\\\\")
@@ -8,38 +15,46 @@ function escapeCString(value) {
     .replace(/\n/g, "\\n");
 }
 
-export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onChange, onReset }) {
-  const [copied, setCopied] = useState(false);
+function buildGeneratedCode(labels) {
+  const lines = [
+    "typedef struct {",
+    "  const char *id;",
+    "  const char *text;",
+    "} panel_label_t;",
+    "",
+    "static const panel_label_t kPanelLabels[] = {",
+  ];
 
-  const groups = useMemo(() => {
-    return PANEL_LABEL_FIELDS.reduce((acc, field) => {
-      if (!acc[field.group]) acc[field.group] = [];
-      acc[field.group].push(field);
-      return acc;
-    }, {});
+  PANEL_LABEL_FIELDS.forEach((field) => {
+    lines.push(`  { "${field.id}", "${escapeCString(labels[field.id] ?? "")}" },`);
+  });
+
+  lines.push("};");
+  return lines.join("\n");
+}
+
+function getFieldById(id) {
+  return PANEL_LABEL_FIELDS.find((field) => field.id === id);
+}
+
+export function PanelLabelEditorCard({ labels, selectedFieldId, onSelectField, onChange, onReset }) {
+  const [copied, setCopied] = useState(false);
+  const selectedField = useMemo(() => getFieldById(selectedFieldId) ?? PANEL_LABEL_FIELDS[0], [selectedFieldId]);
+  const generatedCode = useMemo(() => buildGeneratedCode(labels), [labels]);
+  const nonDigitGroups = useMemo(() => {
+    return PANEL_LABEL_FIELDS
+      .filter((field) => field.group !== "Цифровая клавиатура")
+      .reduce((acc, field) => {
+        if (!acc[field.group]) acc[field.group] = [];
+        acc[field.group].push(field);
+        return acc;
+      }, {});
   }, []);
 
-  const selectedField = useMemo(() => {
-    return PANEL_LABEL_FIELDS.find((field) => field.id === selectedFieldId) ?? PANEL_LABEL_FIELDS[0];
-  }, [selectedFieldId]);
-
-  const generatedCode = useMemo(() => {
-    const lines = [
-      "typedef struct {",
-      "  const char *id;",
-      "  const char *text;",
-      "} panel_label_t;",
-      "",
-      "static const panel_label_t kPanelLabels[] = {",
-    ];
-
-    PANEL_LABEL_FIELDS.forEach((field) => {
-      lines.push(`  { "${field.id}", "${escapeCString(labels[field.id] ?? "")}" },`);
-    });
-
-    lines.push("};");
-    return lines.join("\n");
-  }, [labels]);
+  const handleReset = () => {
+    if (!window.confirm("Сбросить все пользовательские надписи панели?")) return;
+    onReset(PANEL_LABEL_DEFAULTS);
+  };
 
   const handleCopy = async () => {
     if (navigator.clipboard?.writeText) {
@@ -59,7 +74,8 @@ export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onCha
           </div>
           <button
             type="button"
-            onClick={() => onReset(PANEL_LABEL_DEFAULTS)}
+            title="Сбросить все пользовательские надписи панели"
+            onClick={handleReset}
             className="rounded-xl border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-50"
           >
             Сбросить
@@ -77,7 +93,7 @@ export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onCha
         </div>
 
         <div className="space-y-4">
-          {Object.entries(groups).map(([group, fields]) => (
+          {Object.entries(nonDigitGroups).map(([group, fields]) => (
             <div key={group} className="rounded-2xl bg-zinc-50 p-3">
               <div className="mb-3 text-sm font-semibold text-zinc-700">{group}</div>
               <div className="flex flex-wrap gap-2">
@@ -98,6 +114,32 @@ export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onCha
               </div>
             </div>
           ))}
+
+          <div className="rounded-2xl bg-zinc-50 p-3">
+            <div className="mb-3 text-sm font-semibold text-zinc-700">Цифровая клавиатура</div>
+            <div className="grid grid-cols-3 gap-3">
+              {DIGIT_EDITOR_LAYOUT.flatMap((row) => row).map((id) => {
+                const digitField = getFieldById(id);
+                const subField = getFieldById(`${id}Sub`);
+                const active = selectedField.id === id || selectedField.id === `${id}Sub`;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => onSelectField(subField?.id ?? digitField.id)}
+                    className={`rounded-2xl border p-3 text-center transition ${
+                      active ? "border-emerald-600 bg-emerald-600 text-white" : "border-zinc-300 bg-white hover:bg-zinc-100"
+                    }`}
+                  >
+                    <div className="text-lg font-semibold">{labels[digitField.id]}</div>
+                    <div className={`text-xs uppercase tracking-wide ${active ? "text-emerald-50" : "text-zinc-500"}`}>
+                      {subField ? labels[subField.id] : "digit"}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -121,6 +163,19 @@ export function PanelLabelEditor({ labels, selectedFieldId, onSelectField, onCha
           className="min-h-[420px] w-full rounded-2xl border border-zinc-200 bg-zinc-950 p-3 font-mono text-xs text-emerald-300 outline-none"
         />
       </div>
+    </div>
+  );
+}
+
+export function CCodeGeneratorCard({ labels }) {
+  const generatedCode = useMemo(() => buildGeneratedCode(labels), [labels]);
+  return (
+    <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <textarea
+        readOnly
+        value={generatedCode}
+        className="min-h-[420px] w-full rounded-2xl border border-zinc-200 bg-zinc-950 p-3 font-mono text-xs text-emerald-300 outline-none"
+      />
     </div>
   );
 }

@@ -24,14 +24,14 @@ export { Ecros5400UvSimulator } from './presentation/components/Ecros5400UvSimul
 export { LcdCanvas } from './presentation/components/LcdCanvas.jsx';
 export { ButtonKey } from './presentation/components/ButtonKey.jsx';
 export { DevicePanel } from './presentation/components/DevicePanel.jsx';
-export { DeviceStatus } from './presentation/components/DeviceStatus.jsx';
+export { DeviceMetricsCard, VirtualSampleCard } from './presentation/components/DeviceStatus.jsx';
 export { InstrumentPanel } from './presentation/components/InstrumentPanel.jsx';
 export { MeasurementTable } from './presentation/components/MeasurementTable.jsx';
 export { CliEmulator } from './presentation/components/CliEmulator.jsx';
 export { NavigationInfo } from './presentation/components/NavigationInfo.jsx';
 export { AppHeader } from './presentation/components/AppHeader.jsx';
 export { UsbExportPanel } from './presentation/components/UsbExportPanel.jsx';
-export { PanelLabelEditor } from './presentation/components/PanelLabelEditor.jsx';
+export { PanelLabelEditorCard, CCodeGeneratorCard } from './presentation/components/PanelLabelEditor.jsx';
 export { LcdTextEditor } from './presentation/components/LcdTextEditor.jsx';
 
 // Presentation Layer - Hooks

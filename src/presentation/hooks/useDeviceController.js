@@ -4,6 +4,7 @@ import { DeviceService } from "../../application/services/DeviceService.js";
 import {
   handleCalibrationJournalScreen,
   handleCalibrationPlanScreen,
+  handleCalibrationStepScreen,
   handleCalibrationSetupParallelsScreen,
   handleCalibrationSetupStandardsScreen,
   handleFileActionMenuScreen,
@@ -40,10 +41,19 @@ import {
 const deviceService = new DeviceService();
 const cliService = new CliService();
 
-export function useDeviceController() {
-  const [device, setDevice] = useState(initialDevice);
+export function useDeviceController(initialDeviceState = null) {
+  const [device, setDevice] = useState(() => (
+    initialDeviceState
+      ? { ...initialDevice(), ...initialDeviceState }
+      : initialDevice()
+  ));
+  const [isPaused, setIsPaused] = useState(false);
   const [cliValue, setCliValue] = useState("help");
   const kineticTimerRef = useRef(null);
+  const kineticStartedAtRef = useRef(0);
+  const kineticPausedAtRef = useRef(0);
+  const kineticPausedTotalRef = useRef(0);
+  const pausedRef = useRef(false);
   const selfTestsRanRef = useRef(false);
 
   useEffect(() => {
@@ -53,14 +63,31 @@ export function useDeviceController() {
     }
   }, []);
 
+  useEffect(() => {
+    pausedRef.current = isPaused;
+    if (kineticTimerRef.current) {
+      if (isPaused) {
+        kineticPausedAtRef.current = Date.now();
+      } else if (kineticPausedAtRef.current) {
+        kineticPausedTotalRef.current += Date.now() - kineticPausedAtRef.current;
+        kineticPausedAtRef.current = 0;
+      }
+    }
+  }, [isPaused]);
+
   const logLine = useCallback((line) => {
     setDevice((d) => ({ ...d, logLines: [...d.logLines.slice(-180), line] }));
   }, []);
 
   const setBusy = useCallback(async (label, ms) => {
+    if (pausedRef.current) return;
     setDevice((d) => ({ ...d, busy: true, busyLabel: label }));
     await new Promise((resolve) => setTimeout(resolve, ms));
     setDevice((d) => ({ ...d, busy: false, busyLabel: "ПОДОЖДИТЕ" }));
+  }, []);
+
+  const togglePauseSimulation = useCallback(() => {
+    setIsPaused((current) => !current);
   }, []);
 
   const showWarning = useCallback((title, body, warningReturn = "main") => {
@@ -75,11 +102,17 @@ export function useDeviceController() {
   const resetAll = useCallback(() => {
     if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
     kineticTimerRef.current = null;
+    kineticStartedAtRef.current = 0;
+    kineticPausedAtRef.current = 0;
+    kineticPausedTotalRef.current = 0;
+    setIsPaused(false);
     setDevice(initialDevice());
   }, []);
 
   const performRezero = useCallback(async () => {
+    if (pausedRef.current) return;
     await setBusy("КАЛИБРОВКА НОЛЬ", 700);
+    if (pausedRef.current) return;
     const result = deviceService.performRezero(device);
     setDevice(result.newState);
     logLine(result.logEntry);
@@ -87,26 +120,32 @@ export function useDeviceController() {
   }, [device, logLine, setBusy]);
 
   const performPhotometryMeasure = useCallback(() => {
+    if (pausedRef.current) return;
     const result = deviceService.performPhotometryMeasure(device);
     setDevice(result.newState);
     logLine(result.logEntry);
   }, [device, logLine]);
 
   const performCalibrationMeasure = useCallback(() => {
+    if (pausedRef.current) return;
     const result = deviceService.performCalibrationMeasure(device);
     setDevice(result.newState);
     logLine(result.logEntry);
   }, [device, logLine]);
 
   const performDarkCurrent = useCallback(async () => {
+    if (pausedRef.current) return;
     await setBusy("ТЕМНОВОЙ ТОК", 900);
+    if (pausedRef.current) return;
     const result = deviceService.performDarkCurrent(device);
     setDevice(result.newState);
     logLine(result.logEntry);
   }, [device, logLine, setBusy]);
 
   const performWavelengthCalibration = useCallback(async () => {
+    if (pausedRef.current) return;
     await setBusy("КАЛИБРОВКА ЛЯМБДА", 1600);
+    if (pausedRef.current) return;
     const result = deviceService.performWavelengthCalibration(device);
     setDevice(result.newState);
     logLine(result.logEntry);
@@ -114,6 +153,7 @@ export function useDeviceController() {
   }, [device, logLine, setBusy, showWarning]);
 
   const moveCalibrationCursor = useCallback((direction) => {
+    if (pausedRef.current) return;
     setDevice((d) => {
       const { plan, resultCursor } = d.calibration;
       const measured = getCalibrationResultIndexes(plan);
@@ -129,6 +169,7 @@ export function useDeviceController() {
   }, []);
 
   const nextCalibrationStep = useCallback(() => {
+    if (pausedRef.current) return;
     setDevice((d) => {
       const nextIndex = findNextPendingStep(d.calibration.plan, d.calibration.stepIndex);
       if (nextIndex === -1) return { ...d, screen: "calibrationGraph" };
@@ -137,10 +178,12 @@ export function useDeviceController() {
   }, []);
 
   const remeasureCalibrationAtCursor = useCallback(() => {
+    if (pausedRef.current) return;
     setDevice((d) => ({ ...d, calibration: { ...d.calibration, stepIndex: d.calibration.resultCursor }, screen: "calibrationStep" }));
   }, []);
 
   const deleteCalibrationAtCursor = useCallback(() => {
+    if (pausedRef.current) return;
     setDevice((d) => {
       const index = d.calibration.resultCursor;
       const plan = [...d.calibration.plan];
@@ -152,13 +195,18 @@ export function useDeviceController() {
   }, []);
 
   const startKinetics = useCallback(() => {
+    if (pausedRef.current) return;
     if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
+    kineticStartedAtRef.current = Date.now();
+    kineticPausedAtRef.current = 0;
+    kineticPausedTotalRef.current = 0;
     setDevice((d) => ({ ...d, kineticPoints: [], screen: "kineticsRun" }));
 
-    const startedAt = Date.now();
     kineticTimerRef.current = setInterval(() => {
+      if (pausedRef.current) return;
       setDevice((d) => {
-        const time = Math.floor((Date.now() - startedAt) / 500);
+        const elapsed = Date.now() - kineticStartedAtRef.current - kineticPausedTotalRef.current;
+        const time = Math.floor(elapsed / 500);
         const measurement = measureSample({
           sample: "kinetic",
           wavelength: d.wavelength,
@@ -188,16 +236,23 @@ export function useDeviceController() {
   const stopKinetics = useCallback(() => {
     if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
     kineticTimerRef.current = null;
+    kineticStartedAtRef.current = 0;
+    kineticPausedAtRef.current = 0;
+    kineticPausedTotalRef.current = 0;
     setDevice((d) => ({ ...d, screen: "kineticsMenu" }));
   }, []);
 
   useEffect(() => {
     return () => {
       if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
+      kineticStartedAtRef.current = 0;
+      kineticPausedAtRef.current = 0;
+      kineticPausedTotalRef.current = 0;
     };
   }, []);
 
   const openFileManager = useCallback((group, mode = "browse", previousScreen = "main") => {
+    if (pausedRef.current) return;
     setDevice((d) => ({
       ...d,
       previousScreen,
@@ -208,6 +263,7 @@ export function useDeviceController() {
   }, []);
 
   const openSaveDialog = useCallback((group, previousScreen) => {
+    if (pausedRef.current) return;
     setDevice((d) => ({
       ...d,
       screen: "saveDialog",
@@ -219,6 +275,7 @@ export function useDeviceController() {
   }, []);
 
   const openRenameDialog = useCallback((currentName) => {
+    if (pausedRef.current) return;
     setDevice((d) => ({
       ...d,
       screen: "input",
@@ -233,6 +290,8 @@ export function useDeviceController() {
   const exportFile = useCallback((group, index) => deviceService.exportFile(device, group, index), [device]);
 
   const handleInputAction = useCallback((action) => {
+    if (pausedRef.current) return;
+
     if (/^[0-9A-Za-zА-Яа-я ]$/.test(action) || action === "." || action === "-" || action === "_") {
       setDevice((d) => ({ ...d, inputBuffer: `${d.inputBuffer}${action}`.slice(0, 24) }));
       return;
@@ -286,7 +345,7 @@ export function useDeviceController() {
   }, [device, logLine, showWarning]);
 
   const handleAction = useCallback((action) => {
-    if (device.busy) return;
+    if (device.busy || isPaused) return;
 
     const actions = {
       setDevice,
@@ -378,6 +437,7 @@ export function useDeviceController() {
     device,
     exportFile,
     handleInputAction,
+    isPaused,
     logLine,
     moveCalibrationCursor,
     nextCalibrationStep,
@@ -415,11 +475,14 @@ export function useDeviceController() {
   }, [handleAction]);
 
   useEffect(() => {
+    if (isPaused) return undefined;
+    if (device.screen !== "boot") return undefined;
     const bootTimer = setTimeout(() => setDevice((d) => ({ ...d, screen: "diagnostic" })), BOOT_DELAY_MS);
     return () => clearTimeout(bootTimer);
-  }, []);
+  }, [device.screen, isPaused]);
 
   useEffect(() => {
+    if (isPaused) return undefined;
     if (device.screen !== "diagnostic") return undefined;
     if (device.diagIndex >= 7) {
       const timer = setTimeout(() => setDevice((d) => ({ ...d, screen: "warmup" })), DIAG_COMPLETE_DELAY_MS);
@@ -428,9 +491,10 @@ export function useDeviceController() {
 
     const timer = setTimeout(() => setDevice((d) => ({ ...d, diagIndex: d.diagIndex + 1 })), DIAG_STEP_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [device.diagIndex, device.screen]);
+  }, [device.diagIndex, device.screen, isPaused]);
 
   useEffect(() => {
+    if (isPaused) return undefined;
     if (device.screen !== "warmup") return undefined;
 
     const timer = setTimeout(() => {
@@ -441,14 +505,17 @@ export function useDeviceController() {
     }, WARMUP_STEP_MS);
 
     return () => clearTimeout(timer);
-  }, [device.screen, device.warmupRemaining]);
+  }, [device.screen, device.warmupRemaining, isPaused]);
 
   const executeCli = useCallback(async (command) => {
+    if (pausedRef.current) return;
     await cliService.execute(command, device, logLine, setDevice, setBusy);
   }, [device, logLine, setBusy]);
 
   return {
     device,
+    isPaused,
+    togglePauseSimulation,
     setDevice,
     cliValue,
     setCliValue,
