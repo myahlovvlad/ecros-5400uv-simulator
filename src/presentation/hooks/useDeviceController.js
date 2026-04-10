@@ -1,19 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useDebugValue, useEffect, useRef, useState } from "react";
 import { CliService } from "../../application/services/CliService.js";
 import { DeviceService } from "../../application/services/DeviceService.js";
 import {
+  handleCalibrationGraphScreen,
   handleCalibrationJournalScreen,
   handleCalibrationPlanScreen,
-  handleCalibrationStepScreen,
   handleCalibrationSetupParallelsScreen,
   handleCalibrationSetupStandardsScreen,
+  handleCalibrationStepScreen,
   handleFileActionMenuScreen,
   handleFileListScreen,
   handleFileRootScreen,
   handleInputScreen,
+  handleKineticsGraphScreen,
   handleKineticsMenuScreen,
   handleKineticsRunScreen,
   handleMainScreen,
+  handleMultiWaveGraphScreen,
+  handleMultiWaveJournalScreen,
+  handleMultiWaveMenuScreen,
+  handleMultiWaveRunScreen,
+  handleMultiWaveSetupScreen,
+  handlePhotometryGraphScreen,
   handlePhotometryScreen,
   handlePhotometryValueScreen,
   handleQuantCoefScreen,
@@ -25,8 +33,10 @@ import {
   handleWarningScreen,
   handleWarmupScreen,
 } from "../../application/services/ScreenHandlers.js";
+import { transitionToScreen } from "../../application/services/screenFlow.js";
 import { BOOT_DELAY_MS, DIAG_COMPLETE_DELAY_MS, DIAG_STEP_DELAY_MS, WARMUP_STEP_MS } from "../../domain/constants/index.js";
 import {
+  appendLogLine,
   buildCalibrationPlan,
   fileExtByGroup,
   findNextMeasuredIndex,
@@ -37,11 +47,44 @@ import {
   measureSample,
   runSelfTests,
 } from "../../domain/usecases/index.js";
+import { debugError, debugLog } from "../utils/debug.js";
 
-const deviceService = new DeviceService();
-const cliService = new CliService();
+const SCREEN_HANDLER_REGISTRY = {
+  warning: handleWarningScreen,
+  warmup: handleWarmupScreen,
+  input: handleInputScreen,
+  saveDialog: handleSaveDialogScreen,
+  main: handleMainScreen,
+  fileRoot: handleFileRootScreen,
+  fileList: handleFileListScreen,
+  fileActionMenu: handleFileActionMenuScreen,
+  photometry: handlePhotometryScreen,
+  photometryGraph: handlePhotometryGraphScreen,
+  photometryValue: handlePhotometryValueScreen,
+  quantMain: handleQuantMainScreen,
+  quantUnits: handleQuantUnitsScreen,
+  quantCoef: handleQuantCoefScreen,
+  calibrationSetupStandards: handleCalibrationSetupStandardsScreen,
+  calibrationSetupParallels: handleCalibrationSetupParallelsScreen,
+  calibrationPlan: handleCalibrationPlanScreen,
+  calibrationStep: handleCalibrationStepScreen,
+  calibrationJournal: handleCalibrationJournalScreen,
+  calibrationGraph: handleCalibrationGraphScreen,
+  kineticsMenu: handleKineticsMenuScreen,
+  kineticsRun: handleKineticsRunScreen,
+  kineticsGraph: handleKineticsGraphScreen,
+  multiWaveMenu: handleMultiWaveMenuScreen,
+  multiWaveSetup: handleMultiWaveSetupScreen,
+  multiWaveRun: handleMultiWaveRunScreen,
+  multiWaveJournal: handleMultiWaveJournalScreen,
+  multiWaveGraph: handleMultiWaveGraphScreen,
+  settings: handleSettingsScreen,
+  version: handleVersionScreen,
+};
 
-export function useDeviceController(initialDeviceState = null) {
+export function useDeviceController(initialDeviceState = null, services = {}) {
+  const deviceServiceRef = useRef(services.deviceService ?? new DeviceService());
+  const cliServiceRef = useRef(services.cliService ?? new CliService());
   const [device, setDevice] = useState(() => (
     initialDeviceState
       ? { ...initialDevice(), ...initialDeviceState }
@@ -49,12 +92,52 @@ export function useDeviceController(initialDeviceState = null) {
   ));
   const [isPaused, setIsPaused] = useState(false);
   const [cliValue, setCliValue] = useState("help");
+  const deviceRef = useRef(device);
   const kineticTimerRef = useRef(null);
   const kineticStartedAtRef = useRef(0);
   const kineticPausedAtRef = useRef(0);
   const kineticPausedTotalRef = useRef(0);
   const pausedRef = useRef(false);
   const selfTestsRanRef = useRef(false);
+
+  useEffect(() => {
+    deviceRef.current = device;
+  }, [device]);
+
+  useDebugValue({
+    screen: device.screen,
+    paused: isPaused,
+    busy: device.busy,
+    kineticRunning: Boolean(kineticTimerRef.current),
+    multiWaveRuns: device.multiWaveMeasurements.length,
+  });
+
+  const stopKineticTimer = useCallback(() => {
+    if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
+    kineticTimerRef.current = null;
+    kineticStartedAtRef.current = 0;
+    kineticPausedAtRef.current = 0;
+    kineticPausedTotalRef.current = 0;
+  }, []);
+
+  const logLine = useCallback((line) => {
+    setDevice((current) => ({ ...current, logLines: appendLogLine(current.logLines, line) }));
+  }, []);
+
+  const showWarning = useCallback((title, body, warningReturn = "main") => {
+    setDevice((current) => transitionToScreen(current, "warning", {
+      warning: { title: String(title).toUpperCase(), body: String(body).toUpperCase() },
+      warningReturn,
+    }));
+  }, []);
+
+  const handleControllerError = useCallback((scope, error, warningReturn = null) => {
+    const current = deviceRef.current;
+    stopKineticTimer();
+    debugError(scope, error, { screen: current.screen });
+    logLine(`error: ${scope}`);
+    showWarning("ОШИБКА", `${scope}: ${error?.message ?? "RUNTIME"}`, warningReturn ?? current.screen ?? "main");
+  }, [logLine, showWarning, stopKineticTimer]);
 
   useEffect(() => {
     if (!selfTestsRanRef.current) {
@@ -65,220 +148,270 @@ export function useDeviceController(initialDeviceState = null) {
 
   useEffect(() => {
     pausedRef.current = isPaused;
-    if (kineticTimerRef.current) {
-      if (isPaused) {
-        kineticPausedAtRef.current = Date.now();
-      } else if (kineticPausedAtRef.current) {
-        kineticPausedTotalRef.current += Date.now() - kineticPausedAtRef.current;
-        kineticPausedAtRef.current = 0;
-      }
+    if (!kineticTimerRef.current) return;
+    if (isPaused) {
+      kineticPausedAtRef.current = Date.now();
+      return;
+    }
+    if (kineticPausedAtRef.current) {
+      kineticPausedTotalRef.current += Date.now() - kineticPausedAtRef.current;
+      kineticPausedAtRef.current = 0;
     }
   }, [isPaused]);
 
-  const logLine = useCallback((line) => {
-    setDevice((d) => ({ ...d, logLines: [...d.logLines.slice(-180), line] }));
-  }, []);
-
   const setBusy = useCallback(async (label, ms) => {
     if (pausedRef.current) return;
-    setDevice((d) => ({ ...d, busy: true, busyLabel: label }));
+    setDevice((current) => ({ ...current, busy: true, busyLabel: label }));
     await new Promise((resolve) => setTimeout(resolve, ms));
-    setDevice((d) => ({ ...d, busy: false, busyLabel: "ПОДОЖДИТЕ" }));
+    setDevice((current) => ({ ...current, busy: false, busyLabel: "ПОДОЖДИТЕ" }));
   }, []);
 
   const togglePauseSimulation = useCallback(() => {
     setIsPaused((current) => !current);
   }, []);
 
-  const showWarning = useCallback((title, body, warningReturn = "main") => {
-    setDevice((d) => ({
-      ...d,
-      screen: "warning",
-      warning: { title: String(title).toUpperCase(), body: String(body).toUpperCase() },
-      warningReturn,
-    }));
-  }, []);
-
   const resetAll = useCallback(() => {
-    if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
-    kineticTimerRef.current = null;
-    kineticStartedAtRef.current = 0;
-    kineticPausedAtRef.current = 0;
-    kineticPausedTotalRef.current = 0;
+    stopKineticTimer();
     setIsPaused(false);
     setDevice(initialDevice());
-  }, []);
+  }, [stopKineticTimer]);
 
   const performRezero = useCallback(async () => {
-    if (pausedRef.current) return;
-    await setBusy("КАЛИБРОВКА НОЛЬ", 700);
-    if (pausedRef.current) return;
-    const result = deviceService.performRezero(device);
-    setDevice(result.newState);
-    logLine(result.logEntry);
-    logLine("gain -> 1");
-  }, [device, logLine, setBusy]);
+    try {
+      if (pausedRef.current) return;
+      await setBusy("КАЛИБРОВКА НОЛЬ", 700);
+      if (pausedRef.current) return;
+      const result = deviceServiceRef.current.performRezero(deviceRef.current);
+      setDevice(result.newState);
+      logLine(result.logEntry);
+      logLine("gain -> 1");
+    } catch (error) {
+      handleControllerError("performRezero", error);
+    }
+  }, [handleControllerError, logLine, setBusy]);
 
   const performPhotometryMeasure = useCallback(() => {
-    if (pausedRef.current) return;
-    const result = deviceService.performPhotometryMeasure(device);
-    setDevice(result.newState);
-    logLine(result.logEntry);
-  }, [device, logLine]);
+    try {
+      if (pausedRef.current) return;
+      const result = deviceServiceRef.current.performPhotometryMeasure(deviceRef.current);
+      setDevice(result.newState);
+      logLine(result.logEntry);
+    } catch (error) {
+      handleControllerError("performPhotometryMeasure", error);
+    }
+  }, [handleControllerError, logLine]);
 
   const performCalibrationMeasure = useCallback(() => {
-    if (pausedRef.current) return;
-    const result = deviceService.performCalibrationMeasure(device);
-    setDevice(result.newState);
-    logLine(result.logEntry);
-  }, [device, logLine]);
+    try {
+      if (pausedRef.current) return;
+      const result = deviceServiceRef.current.performCalibrationMeasure(deviceRef.current);
+      setDevice(result.newState);
+      logLine(result.logEntry);
+    } catch (error) {
+      handleControllerError("performCalibrationMeasure", error);
+    }
+  }, [handleControllerError, logLine]);
 
   const performDarkCurrent = useCallback(async () => {
-    if (pausedRef.current) return;
-    await setBusy("ТЕМНОВОЙ ТОК", 900);
-    if (pausedRef.current) return;
-    const result = deviceService.performDarkCurrent(device);
-    setDevice(result.newState);
-    logLine(result.logEntry);
-  }, [device, logLine, setBusy]);
+    try {
+      if (pausedRef.current) return;
+      await setBusy("ТЕМНОВОЙ ТОК", 900);
+      if (pausedRef.current) return;
+      const result = deviceServiceRef.current.performDarkCurrent(deviceRef.current);
+      setDevice(result.newState);
+      logLine(result.logEntry);
+    } catch (error) {
+      handleControllerError("performDarkCurrent", error, "settings");
+    }
+  }, [handleControllerError, logLine, setBusy]);
 
   const performWavelengthCalibration = useCallback(async () => {
-    if (pausedRef.current) return;
-    await setBusy("КАЛИБРОВКА ЛЯМБДА", 1600);
-    if (pausedRef.current) return;
-    const result = deviceService.performWavelengthCalibration(device);
-    setDevice(result.newState);
-    logLine(result.logEntry);
-    showWarning("УСПЕШНО", "КАЛИБРОВКА ВЫПОЛНЕНА", "settings");
-  }, [device, logLine, setBusy, showWarning]);
+    try {
+      if (pausedRef.current) return;
+      await setBusy("КАЛИБРОВКА ЛЯМБДА", 1600);
+      if (pausedRef.current) return;
+      const result = deviceServiceRef.current.performWavelengthCalibration(deviceRef.current);
+      setDevice(result.newState);
+      logLine(result.logEntry);
+      showWarning("УСПЕШНО", "КАЛИБРОВКА ВЫПОЛНЕНА", "settings");
+    } catch (error) {
+      handleControllerError("performWavelengthCalibration", error, "settings");
+    }
+  }, [handleControllerError, logLine, setBusy, showWarning]);
 
   const moveCalibrationCursor = useCallback((direction) => {
     if (pausedRef.current) return;
-    setDevice((d) => {
-      const { plan, resultCursor } = d.calibration;
+    setDevice((current) => {
+      const { plan, resultCursor } = current.calibration;
       const measured = getCalibrationResultIndexes(plan);
-      if (!measured.length) return d;
-      const current = measured.includes(resultCursor) ? resultCursor : measured[measured.length - 1];
+      if (!measured.length) return current;
+      const activeCursor = measured.includes(resultCursor) ? resultCursor : measured[measured.length - 1];
       if (direction === "up") {
-        return { ...d, calibration: { ...d.calibration, resultCursor: findPrevMeasuredIndex(plan, current) } };
+        return { ...current, calibration: { ...current.calibration, resultCursor: findPrevMeasuredIndex(plan, activeCursor) } };
       }
-      const next = findNextMeasuredIndex(plan, current);
-      if (next === -1) return { ...d, calibration: { ...d.calibration, resultCursor: current }, screen: "calibrationGraph" };
-      return { ...d, calibration: { ...d.calibration, resultCursor: next } };
+      const next = findNextMeasuredIndex(plan, activeCursor);
+      if (next === -1) {
+        return transitionToScreen(
+          { ...current, calibration: { ...current.calibration, resultCursor: activeCursor } },
+          "calibrationGraph",
+        );
+      }
+      return { ...current, calibration: { ...current.calibration, resultCursor: next } };
     });
   }, []);
 
   const nextCalibrationStep = useCallback(() => {
     if (pausedRef.current) return;
-    setDevice((d) => {
-      const nextIndex = findNextPendingStep(d.calibration.plan, d.calibration.stepIndex);
-      if (nextIndex === -1) return { ...d, screen: "calibrationGraph" };
-      return { ...d, calibration: { ...d.calibration, stepIndex: nextIndex }, screen: "calibrationStep" };
+    setDevice((current) => {
+      const nextIndex = findNextPendingStep(current.calibration.plan, current.calibration.stepIndex);
+      if (nextIndex === -1) return transitionToScreen(current, "calibrationGraph");
+      return transitionToScreen({ ...current, calibration: { ...current.calibration, stepIndex: nextIndex } }, "calibrationStep");
     });
   }, []);
 
   const remeasureCalibrationAtCursor = useCallback(() => {
     if (pausedRef.current) return;
-    setDevice((d) => ({ ...d, calibration: { ...d.calibration, stepIndex: d.calibration.resultCursor }, screen: "calibrationStep" }));
+    setDevice((current) => transitionToScreen(
+      { ...current, calibration: { ...current.calibration, stepIndex: current.calibration.resultCursor } },
+      "calibrationStep",
+    ));
   }, []);
 
   const deleteCalibrationAtCursor = useCallback(() => {
     if (pausedRef.current) return;
-    setDevice((d) => {
-      const index = d.calibration.resultCursor;
-      const plan = [...d.calibration.plan];
+    setDevice((current) => {
+      const index = current.calibration.resultCursor;
+      const plan = [...current.calibration.plan];
       const step = plan[index];
-      if (!step?.result) return d;
+      if (!step?.result) return current;
       plan[index] = { ...step, result: null, status: "pending" };
-      return { ...d, calibration: { ...d.calibration, plan, stepIndex: index, resultCursor: index }, screen: "calibrationStep" };
+      return transitionToScreen(
+        { ...current, calibration: { ...current.calibration, plan, stepIndex: index, resultCursor: index } },
+        "calibrationStep",
+      );
+    });
+  }, []);
+
+  const moveMultiWaveCursor = useCallback((direction) => {
+    if (pausedRef.current) return;
+    setDevice((current) => {
+      const total = current.multiWaveMeasurements.length;
+      if (!total) return current;
+      if (direction === "up") {
+        return { ...current, multiWaveMeasurementCursor: Math.max(0, current.multiWaveMeasurementCursor - 1) };
+      }
+      if (current.multiWaveMeasurementCursor >= total - 1) {
+        return transitionToScreen(current, "multiWaveGraph");
+      }
+      return { ...current, multiWaveMeasurementCursor: Math.min(total - 1, current.multiWaveMeasurementCursor + 1) };
     });
   }, []);
 
   const startKinetics = useCallback(() => {
-    if (pausedRef.current) return;
-    if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
-    kineticStartedAtRef.current = Date.now();
-    kineticPausedAtRef.current = 0;
-    kineticPausedTotalRef.current = 0;
-    setDevice((d) => ({ ...d, kineticPoints: [], screen: "kineticsRun" }));
-
-    kineticTimerRef.current = setInterval(() => {
+    try {
       if (pausedRef.current) return;
-      setDevice((d) => {
-        const elapsed = Date.now() - kineticStartedAtRef.current - kineticPausedTotalRef.current;
-        const time = Math.floor(elapsed / 500);
-        const measurement = measureSample({
-          sample: "kinetic",
-          wavelength: d.wavelength,
-          gain: d.gain,
-          e100: d.e100,
-          darkValues: d.darkValues,
-          timeSec: time,
-        });
-
-        const kineticPoints = [...d.kineticPoints, { time, value: measurement.a }];
-        if (time >= d.kineticDuration) {
-          clearInterval(kineticTimerRef.current);
-          kineticTimerRef.current = null;
-        }
-
-        return {
-          ...d,
-          kineticPoints,
-          lastEnergy: measurement.energy,
-          lastComputedA: measurement.a,
-          lastComputedT: measurement.t,
-        };
-      });
-    }, 500);
-  }, []);
-
-  const stopKinetics = useCallback(() => {
-    if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
-    kineticTimerRef.current = null;
-    kineticStartedAtRef.current = 0;
-    kineticPausedAtRef.current = 0;
-    kineticPausedTotalRef.current = 0;
-    setDevice((d) => ({ ...d, screen: "kineticsMenu" }));
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (kineticTimerRef.current) clearInterval(kineticTimerRef.current);
-      kineticStartedAtRef.current = 0;
+      stopKineticTimer();
+      kineticStartedAtRef.current = Date.now();
       kineticPausedAtRef.current = 0;
       kineticPausedTotalRef.current = 0;
-    };
+      setDevice((current) => transitionToScreen({ ...current, kineticPoints: [] }, "kineticsRun"));
+      logLine("kinetics -> start");
+
+      kineticTimerRef.current = setInterval(() => {
+        try {
+          if (pausedRef.current) return;
+          setDevice((current) => {
+            const elapsed = Date.now() - kineticStartedAtRef.current - kineticPausedTotalRef.current;
+            const time = Math.floor(elapsed / 500);
+            const measurement = measureSample({
+              sample: "kinetic",
+              wavelength: current.wavelength,
+              gain: current.gain,
+              e100: current.e100,
+              darkValues: current.darkValues,
+              timeSec: time,
+            });
+
+            const kineticPoints = [...current.kineticPoints, { time, value: measurement.a }];
+            if (time >= current.kineticDuration) {
+              stopKineticTimer();
+            }
+
+            return {
+              ...current,
+              kineticPoints,
+              lastEnergy: measurement.energy,
+              lastComputedA: measurement.a,
+              lastComputedT: measurement.t,
+            };
+          });
+        } catch (error) {
+          handleControllerError("startKinetics.tick", error, "kineticsMenu");
+        }
+      }, 500);
+    } catch (error) {
+      handleControllerError("startKinetics", error, "kineticsMenu");
+    }
+  }, [handleControllerError, logLine, stopKineticTimer]);
+
+  const stopKinetics = useCallback(() => {
+    stopKineticTimer();
+    logLine("kinetics -> stop");
+    setDevice((current) => transitionToScreen(current, "kineticsMenu"));
+  }, [logLine, stopKineticTimer]);
+
+  const startMultiWave = useCallback(() => {
+    if (pausedRef.current) return;
+    debugLog("handleAction", "enter multiWaveRun");
+    setDevice((current) => transitionToScreen(current, "multiWaveRun"));
   }, []);
+
+  const performMultiWaveRun = useCallback(async () => {
+    try {
+      if (pausedRef.current) return;
+      const current = deviceRef.current;
+      const count = current.multiWaveCount;
+      for (let index = 0; index < count; index += 1) {
+        await setBusy(`ИЗМЕРЕНИЕ λ${index + 1}`, 140);
+        if (pausedRef.current) return;
+      }
+      const result = deviceServiceRef.current.performMultiWaveMeasure(deviceRef.current);
+      setDevice(result.newState);
+      logLine(result.logEntry);
+    } catch (error) {
+      handleControllerError("performMultiWaveRun", error, "multiWaveRun");
+    }
+  }, [handleControllerError, logLine, setBusy]);
+
+  useEffect(() => {
+    return () => stopKineticTimer();
+  }, [stopKineticTimer]);
 
   const openFileManager = useCallback((group, mode = "browse", previousScreen = "main") => {
     if (pausedRef.current) return;
-    setDevice((d) => ({
-      ...d,
-      previousScreen,
-      fileContext: { group, mode },
-      fileListIndex: 0,
-      screen: previousScreen === "main" ? "fileRoot" : "fileList",
-    }));
+    setDevice((current) => transitionToScreen(
+      { ...current, previousScreen },
+      previousScreen === "main" ? "fileRoot" : "fileList",
+      { group, mode, fileListIndex: 0, keepPrevious: true },
+    ));
   }, []);
 
   const openSaveDialog = useCallback((group, previousScreen) => {
     if (pausedRef.current) return;
-    setDevice((d) => ({
-      ...d,
-      screen: "saveDialog",
-      previousScreen,
-      saveMeta: { group, suggestedExt: fileExtByGroup(group) },
-      inputTarget: "saveName",
-      inputBuffer: "",
-    }));
+    setDevice((current) => transitionToScreen(
+      { ...current, previousScreen },
+      "saveDialog",
+      {
+        saveMeta: { group, suggestedExt: fileExtByGroup(group) },
+        returnScreen: previousScreen,
+        keepPrevious: true,
+      },
+    ));
   }, []);
 
   const openRenameDialog = useCallback((currentName) => {
     if (pausedRef.current) return;
-    setDevice((d) => ({
-      ...d,
-      screen: "input",
+    setDevice((current) => transitionToScreen(current, "input", {
       inputTarget: "renameFile",
       inputBuffer: currentName,
       dialogTitle: "ПЕРЕИМЕНОВАТЬ",
@@ -286,66 +419,97 @@ export function useDeviceController(initialDeviceState = null) {
     }));
   }, []);
 
-  const deleteFile = useCallback((group, index) => deviceService.deleteFile(device, group, index), [device]);
-  const exportFile = useCallback((group, index) => deviceService.exportFile(device, group, index), [device]);
+  const deleteFile = useCallback((group, index) => deviceServiceRef.current.deleteFile(deviceRef.current, group, index), []);
+  const exportFile = useCallback((group, index) => deviceServiceRef.current.exportFile(deviceRef.current, group, index), []);
 
   const handleInputAction = useCallback((action) => {
-    if (pausedRef.current) return;
+    try {
+      if (pausedRef.current) return;
+      const current = deviceRef.current;
 
-    if (/^[0-9A-Za-zА-Яа-я ]$/.test(action) || action === "." || action === "-" || action === "_") {
-      setDevice((d) => ({ ...d, inputBuffer: `${d.inputBuffer}${action}`.slice(0, 24) }));
-      return;
+      if (/^[0-9A-Za-zА-Яа-я ]$/.test(action) || action === "." || action === "-" || action === "_") {
+        setDevice((deviceState) => ({ ...deviceState, inputBuffer: `${deviceState.inputBuffer}${action}`.slice(0, 24) }));
+        return;
+      }
+
+      if (action === "CLEAR") {
+        setDevice((deviceState) => ({ ...deviceState, inputBuffer: deviceState.inputBuffer.slice(0, -1) }));
+        return;
+      }
+
+      if (action !== "ENTER") return;
+
+      const raw = parseFloat(current.inputBuffer || "0");
+
+      if (current.inputTarget === "wavelength") {
+        const result = deviceServiceRef.current.setWavelength(current, raw);
+        if (result.error) return showWarning(result.error.title, result.error.body, result.error.returnScreen);
+        setDevice(result.newState);
+        if (result.logEntry) logLine(result.logEntry);
+        return;
+      }
+
+      if (current.inputTarget === "quantK" || current.inputTarget === "quantB") {
+        const result = deviceServiceRef.current.setQuantCoefficient(current, current.inputTarget === "quantK" ? "K" : "B", raw);
+        if (result.error) return showWarning(result.error.title, result.error.body, "quantCoef");
+        setDevice(result.newState);
+        return;
+      }
+
+      if (current.inputTarget === "kinUpper" || current.inputTarget === "kinLower" || current.inputTarget === "kinDuration") {
+        const typeMap = { kinUpper: "upper", kinLower: "lower", kinDuration: "duration" };
+        const result = deviceServiceRef.current.setKineticParameter(current, typeMap[current.inputTarget], raw);
+        if (result.error) return showWarning(result.error.title, result.error.body, "kineticsMenu");
+        setDevice(result.newState);
+        return;
+      }
+
+      if (current.inputTarget === "multiWaveCount") {
+        const result = deviceServiceRef.current.setMultiWaveCount(current, raw);
+        if (result.error) return showWarning(result.error.title, result.error.body, "multiWaveMenu");
+        setDevice(result.newState);
+        return;
+      }
+
+      if (current.inputTarget === "parallelCount") {
+        const result = deviceServiceRef.current.setMultiWaveParallelCount(current, raw);
+        if (result.error) return showWarning(result.error.title, result.error.body, "multiWaveMenu");
+        setDevice(result.newState);
+        return;
+      }
+
+      if (typeof current.inputTarget === "string" && current.inputTarget.startsWith("multiWaveWavelength_")) {
+        const index = Number.parseInt(current.inputTarget.split("_").at(-1), 10);
+        const result = deviceServiceRef.current.setMultiWaveWavelength(current, index, raw);
+        if (result.error) return showWarning(result.error.title, result.error.body, "multiWaveSetup");
+        setDevice(result.newState);
+        if (result.logEntry) logLine(result.logEntry);
+        return;
+      }
+
+      if (current.inputTarget === "saveName") {
+        const result = deviceServiceRef.current.saveFile(current, current.inputBuffer);
+        if (result.error) return showWarning(result.error.title, result.error.body, result.error.returnScreen);
+        setDevice(result.newState);
+        if (result.logEntry) logLine(result.logEntry);
+        return;
+      }
+
+      if (current.inputTarget === "renameFile") {
+        const result = deviceServiceRef.current.renameFile(current, current.fileContext.group, current.fileListIndex, current.inputBuffer);
+        if (result.error) return showWarning(result.error.title, result.error.body, result.error.returnScreen);
+        setDevice(result.newState);
+      }
+    } catch (error) {
+      handleControllerError("handleInputAction", error);
     }
-
-    if (action === "CLEAR") {
-      setDevice((d) => ({ ...d, inputBuffer: d.inputBuffer.slice(0, -1) }));
-      return;
-    }
-
-    if (action !== "ENTER") return;
-
-    const raw = parseFloat(device.inputBuffer || "0");
-
-    if (device.inputTarget === "wavelength") {
-      const result = deviceService.setWavelength(device, raw);
-      if (result.error) return showWarning(result.error.title, result.error.body, result.error.returnScreen);
-      setDevice(result.newState);
-      logLine(result.logEntry);
-      return;
-    }
-
-    if (device.inputTarget === "quantK" || device.inputTarget === "quantB") {
-      const result = deviceService.setQuantCoefficient(device, device.inputTarget === "quantK" ? "K" : "B", raw);
-      if (result.error) return showWarning(result.error.title, result.error.body, "quantCoef");
-      setDevice(result.newState);
-      return;
-    }
-
-    if (device.inputTarget === "kinUpper" || device.inputTarget === "kinLower" || device.inputTarget === "kinDuration") {
-      const typeMap = { kinUpper: "upper", kinLower: "lower", kinDuration: "duration" };
-      const result = deviceService.setKineticParameter(device, typeMap[device.inputTarget], raw);
-      if (result.error) return showWarning(result.error.title, result.error.body, "kineticsMenu");
-      setDevice(result.newState);
-      return;
-    }
-
-    if (device.inputTarget === "saveName") {
-      const result = deviceService.saveFile(device, device.inputBuffer);
-      if (result.error) return showWarning(result.error.title, result.error.body, result.error.returnScreen);
-      setDevice(result.newState);
-      logLine(result.logEntry);
-      return;
-    }
-
-    if (device.inputTarget === "renameFile") {
-      const result = deviceService.renameFile(device, device.fileContext.group, device.fileListIndex, device.inputBuffer);
-      if (result.error) return showWarning(result.error.title, result.error.body, result.error.returnScreen);
-      setDevice(result.newState);
-    }
-  }, [device, logLine, showWarning]);
+  }, [handleControllerError, logLine, showWarning]);
 
   const handleAction = useCallback((action) => {
-    if (device.busy || isPaused) return;
+    if (deviceRef.current.busy || pausedRef.current) return;
+
+    const current = deviceRef.current;
+    debugLog("handleAction", "screen:", current.screen, "action:", action);
 
     const actions = {
       setDevice,
@@ -358,10 +522,13 @@ export function useDeviceController(initialDeviceState = null) {
       performWavelengthCalibration,
       startKinetics,
       stopKinetics,
+      startMultiWave,
+      performMultiWaveRun,
       moveCalibrationCursor,
       nextCalibrationStep,
       remeasureCalibrationAtCursor,
       deleteCalibrationAtCursor,
+      moveMultiWaveCursor,
       openFileManager,
       openSaveDialog,
       openRenameDialog,
@@ -372,80 +539,30 @@ export function useDeviceController(initialDeviceState = null) {
       buildCalibrationPlan,
     };
 
-    switch (device.screen) {
-      case "warning":
-        return handleWarningScreen(device, action, actions);
-      case "warmup":
-        return handleWarmupScreen(device, action, actions);
-      case "input":
-        return handleInputScreen(device, action, actions);
-      case "saveDialog":
-        return handleSaveDialogScreen(device, action, actions);
-      case "main":
-        return handleMainScreen(device, action, actions);
-      case "fileRoot":
-        return handleFileRootScreen(device, action, actions);
-      case "fileList":
-        return handleFileListScreen(device, action, actions);
-      case "fileActionMenu":
-        return handleFileActionMenuScreen(device, action, actions);
-      case "photometry":
-        return handlePhotometryScreen(device, action, actions);
-      case "photometryGraph":
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "photometry" }));
-        return;
-      case "photometryValue":
-        return handlePhotometryValueScreen(device, action, actions);
-      case "quantMain":
-        return handleQuantMainScreen(device, action, actions);
-      case "quantUnits":
-        return handleQuantUnitsScreen(device, action, actions);
-      case "quantCoef":
-        return handleQuantCoefScreen(device, action, actions);
-      case "calibrationSetupStandards":
-        return handleCalibrationSetupStandardsScreen(device, action, actions);
-      case "calibrationSetupParallels":
-        return handleCalibrationSetupParallelsScreen(device, action, actions);
-      case "calibrationPlan":
-        return handleCalibrationPlanScreen(device, action, actions);
-      case "calibrationStep":
-        return handleCalibrationStepScreen(device, action, actions);
-      case "calibrationJournal":
-        return handleCalibrationJournalScreen(device, action, actions);
-      case "calibrationGraph":
-        if (action === "FILE") return openSaveDialog("ГРАДУИРОВКА", "calibrationGraph");
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "calibrationJournal" }));
-        return;
-      case "kineticsMenu":
-        return handleKineticsMenuScreen(device, action, actions);
-      case "kineticsRun":
-        return handleKineticsRunScreen(device, action, actions);
-      case "kineticsGraph":
-        if (action === "ESC") return setDevice((d) => ({ ...d, screen: "kineticsRun" }));
-        return;
-      case "settings":
-        return handleSettingsScreen(device, action, actions);
-      case "version":
-        return handleVersionScreen(device, action, actions);
-      default:
-        return;
+    const handler = SCREEN_HANDLER_REGISTRY[current.screen];
+    if (!handler) return;
+
+    try {
+      return handler(current, action, actions);
+    } catch (error) {
+      handleControllerError(`handleAction.${current.screen}`, error, current.screen);
     }
   }, [
-    buildCalibrationPlan,
     deleteCalibrationAtCursor,
     deleteFile,
-    device,
     exportFile,
+    handleControllerError,
     handleInputAction,
-    isPaused,
     logLine,
     moveCalibrationCursor,
+    moveMultiWaveCursor,
     nextCalibrationStep,
     openFileManager,
     openRenameDialog,
     openSaveDialog,
     performCalibrationMeasure,
     performDarkCurrent,
+    performMultiWaveRun,
     performPhotometryMeasure,
     performRezero,
     performWavelengthCalibration,
@@ -453,6 +570,7 @@ export function useDeviceController(initialDeviceState = null) {
     resetAll,
     showWarning,
     startKinetics,
+    startMultiWave,
     stopKinetics,
   ]);
 
@@ -477,7 +595,7 @@ export function useDeviceController(initialDeviceState = null) {
   useEffect(() => {
     if (isPaused) return undefined;
     if (device.screen !== "boot") return undefined;
-    const bootTimer = setTimeout(() => setDevice((d) => ({ ...d, screen: "diagnostic" })), BOOT_DELAY_MS);
+    const bootTimer = setTimeout(() => setDevice((current) => transitionToScreen(current, "diagnostic")), BOOT_DELAY_MS);
     return () => clearTimeout(bootTimer);
   }, [device.screen, isPaused]);
 
@@ -485,11 +603,11 @@ export function useDeviceController(initialDeviceState = null) {
     if (isPaused) return undefined;
     if (device.screen !== "diagnostic") return undefined;
     if (device.diagIndex >= 7) {
-      const timer = setTimeout(() => setDevice((d) => ({ ...d, screen: "warmup" })), DIAG_COMPLETE_DELAY_MS);
+      const timer = setTimeout(() => setDevice((current) => transitionToScreen(current, "warmup")), DIAG_COMPLETE_DELAY_MS);
       return () => clearTimeout(timer);
     }
 
-    const timer = setTimeout(() => setDevice((d) => ({ ...d, diagIndex: d.diagIndex + 1 })), DIAG_STEP_DELAY_MS);
+    const timer = setTimeout(() => setDevice((current) => ({ ...current, diagIndex: current.diagIndex + 1 })), DIAG_STEP_DELAY_MS);
     return () => clearTimeout(timer);
   }, [device.diagIndex, device.screen, isPaused]);
 
@@ -498,9 +616,9 @@ export function useDeviceController(initialDeviceState = null) {
     if (device.screen !== "warmup") return undefined;
 
     const timer = setTimeout(() => {
-      setDevice((d) => {
-        if (d.warmupRemaining <= 1) return { ...d, screen: "main", warmupRemaining: 0 };
-        return { ...d, warmupRemaining: d.warmupRemaining - 1 };
+      setDevice((current) => {
+        if (current.warmupRemaining <= 1) return transitionToScreen({ ...current, warmupRemaining: 0 }, "main");
+        return { ...current, warmupRemaining: current.warmupRemaining - 1 };
       });
     }, WARMUP_STEP_MS);
 
@@ -508,9 +626,13 @@ export function useDeviceController(initialDeviceState = null) {
   }, [device.screen, device.warmupRemaining, isPaused]);
 
   const executeCli = useCallback(async (command) => {
-    if (pausedRef.current) return;
-    await cliService.execute(command, device, logLine, setDevice, setBusy);
-  }, [device, logLine, setBusy]);
+    try {
+      if (pausedRef.current) return;
+      await cliServiceRef.current.execute(command, deviceRef.current, logLine, setDevice, setBusy);
+    } catch (error) {
+      handleControllerError("executeCli", error, deviceRef.current.screen);
+    }
+  }, [handleControllerError, logLine, setBusy]);
 
   return {
     device,
@@ -528,6 +650,8 @@ export function useDeviceController(initialDeviceState = null) {
     performWavelengthCalibration,
     startKinetics,
     stopKinetics,
+    startMultiWave,
+    performMultiWaveRun,
     openFileManager,
     openSaveDialog,
     deleteFile,
@@ -536,3 +660,5 @@ export function useDeviceController(initialDeviceState = null) {
     logLine,
   };
 }
+
+useDeviceController.displayName = "useDeviceController";

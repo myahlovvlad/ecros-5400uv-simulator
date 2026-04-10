@@ -1,6 +1,8 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { SCREEN_INDEX } from "../../application/services/screenFlow.js";
+import { debugError, debugLog } from "../utils/debug.js";
 import { LcdCanvas } from "./LcdCanvas.jsx";
-import { SCREEN_INDEX } from "./ScenarioFlowMap.jsx";
 
 const PANEL_MIN_W = 6;
 const PANEL_MIN_H = 4;
@@ -471,6 +473,7 @@ export function InstrumentPanel({
 
   useEffect(() => {
     if (!isCanvasMode || !interaction) return undefined;
+    debugLog("PanelInteraction", { phase: "start", type: interaction.type });
     const stop = () => {
       const currentElements = elementsRef.current ?? elements;
       const currentSelection = selectionRef.current ?? selection;
@@ -479,66 +482,81 @@ export function InstrumentPanel({
         const found = getVisiblePanelElementIds(currentElements).filter((id) => frameIntersects(currentElements[id], currentSelectionBox));
         onSelectedElementIdsChange?.(interaction.additive ? Array.from(new Set([...currentSelection, ...found])) : found);
       }
+      debugLog("PanelInteraction", { phase: "stop", type: interaction.type, guides });
       setInteraction(null);
       setGuides([]);
       setSelectionBox(null);
     };
 
     const onMove = (event) => {
-      const rect = stageRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      let nextInteraction = interaction;
+      try {
+        const rect = stageRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        let nextInteraction = interaction;
 
-      if (interaction.type === "stage-press") {
-        if (!hasPanelDragThresholdPassed(interaction.startX, interaction.startY, event.clientX, event.clientY)) return;
-        nextInteraction = {
-          type: "marquee",
-          additive: interaction.additive,
-          origin: interaction.origin,
-        };
-        setInteraction(nextInteraction);
-      }
+        if (interaction.type === "stage-press") {
+          if (!hasPanelDragThresholdPassed(interaction.startX, interaction.startY, event.clientX, event.clientY)) return;
+          nextInteraction = {
+            type: "marquee",
+            additive: interaction.additive,
+            origin: interaction.origin,
+          };
+          debugLog("PanelInteraction", { phase: "convert", type: "marquee" });
+          setInteraction(nextInteraction);
+        }
 
-      if (interaction.type === "element-press") {
-        if (!hasPanelDragThresholdPassed(interaction.startX, interaction.startY, event.clientX, event.clientY)) return;
-        nextInteraction = {
-          type: "drag",
-          ids: interaction.ids,
-          startX: interaction.startX,
-          startY: interaction.startY,
-          originLayout: interaction.originLayout,
-        };
-        setInteraction(nextInteraction);
-      }
+        if (interaction.type === "element-press") {
+          if (!hasPanelDragThresholdPassed(interaction.startX, interaction.startY, event.clientX, event.clientY)) return;
+          nextInteraction = {
+            type: "drag",
+            ids: interaction.ids,
+            startX: interaction.startX,
+            startY: interaction.startY,
+            originLayout: interaction.originLayout,
+          };
+          debugLog("PanelInteraction", { phase: "convert", type: "drag", ids: interaction.ids });
+          setInteraction(nextInteraction);
+        }
 
-      if (nextInteraction.type === "marquee") {
-        const currentX = ((event.clientX - rect.left) / rect.width) * 100;
-        const currentY = ((event.clientY - rect.top) / rect.height) * PANEL_MAX_H;
-        setSelectionBox({
-          x: Math.min(nextInteraction.origin.x, currentX),
-          y: Math.min(nextInteraction.origin.y, currentY),
-          w: Math.abs(currentX - nextInteraction.origin.x),
-          h: Math.abs(currentY - nextInteraction.origin.y),
-        });
-        return;
-      }
+        if (nextInteraction.type === "marquee") {
+          const currentX = ((event.clientX - rect.left) / rect.width) * 100;
+          const currentY = ((event.clientY - rect.top) / rect.height) * PANEL_MAX_H;
+          setSelectionBox({
+            x: Math.min(nextInteraction.origin.x, currentX),
+            y: Math.min(nextInteraction.origin.y, currentY),
+            w: Math.abs(currentX - nextInteraction.origin.x),
+            h: Math.abs(currentY - nextInteraction.origin.y),
+          });
+          return;
+        }
 
-      const deltaX = ((event.clientX - nextInteraction.startX) / rect.width) * 100;
-      const deltaY = ((event.clientY - nextInteraction.startY) / rect.height) * PANEL_MAX_H;
+        const deltaX = ((event.clientX - nextInteraction.startX) / rect.width) * 100;
+        const deltaY = ((event.clientY - nextInteraction.startY) / rect.height) * PANEL_MAX_H;
 
-      onPanelElementLayoutChange?.((current) => {
-        const normalized = normalizePanelElementLayout(current);
+        const normalized = normalizePanelElementLayout(elementsRef.current ?? elements);
         const candidates = buildGuideCandidates(normalized, nextInteraction.ids);
 
         if (nextInteraction.type === "drag") {
           const moved = movePanelSelectionFromOrigin(nextInteraction.originLayout, nextInteraction.ids, deltaX, deltaY);
           const bounds = getPanelSelectionBounds(moved, nextInteraction.ids);
-          if (!bounds) return normalized;
+          if (!bounds) return;
           const lines = getBoundsLines(bounds);
           const snapX = getSnapAdjustment(lines.vertical, candidates.vertical);
           const snapY = getSnapAdjustment(lines.horizontal, candidates.horizontal);
-          setGuides([...(snapX ? [{ orientation: "v", value: snapX.guide }] : []), ...(snapY ? [{ orientation: "h", value: snapY.guide }] : [])]);
-          return movePanelSelectionFromOrigin(nextInteraction.originLayout, nextInteraction.ids, deltaX + (snapX?.offset ?? 0), deltaY + (snapY?.offset ?? 0));
+          const nextGuides = [
+            ...(snapX ? [{ orientation: "v", value: snapX.guide }] : []),
+            ...(snapY ? [{ orientation: "h", value: snapY.guide }] : []),
+          ];
+          const nextLayout = movePanelSelectionFromOrigin(
+            nextInteraction.originLayout,
+            nextInteraction.ids,
+            deltaX + (snapX?.offset ?? 0),
+            deltaY + (snapY?.offset ?? 0),
+          );
+          debugLog("PanelInteraction", { type: "drag", deltaX, deltaY, guides: nextGuides });
+          setGuides(nextGuides);
+          onPanelElementLayoutChange?.(nextLayout);
+          return;
         }
 
         let bounds = resizeSelectionBounds(nextInteraction.originBounds, nextInteraction.handle, deltaX, deltaY);
@@ -555,9 +573,13 @@ export function InstrumentPanel({
             nextGuides.push({ orientation: line.axis === "x" ? "v" : "h", value: snap.guide });
           }
         });
+        const nextLayout = updatePanelSelectionGeometry(nextInteraction.originLayout, nextInteraction.ids, bounds);
+        debugLog("PanelInteraction", { type: "resize", deltaX, deltaY, guides: nextGuides, handle: nextInteraction.handle });
         setGuides(nextGuides);
-        return updatePanelSelectionGeometry(nextInteraction.originLayout, nextInteraction.ids, bounds);
-      });
+        onPanelElementLayoutChange?.(nextLayout);
+      } catch (error) {
+        debugError("PanelInteraction.onMove", error);
+      }
     };
 
     window.addEventListener("mousemove", onMove);
@@ -566,7 +588,7 @@ export function InstrumentPanel({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", stop);
     };
-  }, [elements, interaction, isCanvasMode, onPanelElementLayoutChange, onSelectedElementIdsChange, selection, selectionBox]);
+  }, [elements, guides, interaction, isCanvasMode, onPanelElementLayoutChange, onSelectedElementIdsChange, selection, selectionBox]);
 
   const beginElementPress = (event, id) => {
     if (!isCanvasMode) return;

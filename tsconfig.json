@@ -1,35 +1,39 @@
 {
+  // TypeScript compiler configuration for ECROS-5400UV Simulator
   "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
+    "target": "ES2020", // Target ECMAScript version
+    "useDefineForClassFields": true, // Use standard class fields behavior
+    "lib": ["ES2020", "DOM", "DOM.Iterable"], // Browser runtime libraries
+    "module": "ESNext", // ES modules for Vite
+    "skipLibCheck": true, // Skip dependency declaration file checks
 
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
+    /* Bundler mode (Vite) */
+    "moduleResolution": "bundler", // Module resolution optimized for bundlers
+    "allowImportingTsExtensions": true, // Allow .ts/.tsx imports without explicit extension handling
+    "resolveJsonModule": true, // Allow importing JSON files
+    "isolatedModules": true, // Ensure each module can be transpiled independently
+    "noEmit": true, // Type-check only, do not emit files
+    "jsx": "react-jsx", // Modern React JSX transform
 
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
+    /* Code quality */
+    "strict": true, // Enable all strict type checks
+    "forceConsistentCasingInFileNames": true, // Require consistent import path casing across OSes
+    "noUnusedLocals": true, // Disallow unused local variables
+    "noUnusedParameters": true, // Disallow unused function parameters
+    "noFallthroughCasesInSwitch": true, // Disallow fallthrough in switch statements
 
-    /* Path mapping */
-    "baseUrl": ".",
+    /* Path aliases */
+    "baseUrl": ".", // Base path for relative imports
     "paths": {
-      "@/*": ["src/*"],
-      "@domain/*": ["src/domain/*"],
-      "@application/*": ["src/application/*"],
-      "@infrastructure/*": ["src/infrastructure/*"],
-      "@presentation/*": ["src/presentation/*"]
+      "@/*": ["src/*"], // Alias for src/
+      "@domain/*": ["src/domain/*"], // Domain layer
+      "@application/*": ["src/application/*"], // Application layer
+      "@infrastructure/*": ["src/infrastructure/*"], // Infrastructure layer
+      "@presentation/*": ["src/presentation/*"] // Presentation layer
     }
   },
+  // Included files and directories
   "include": ["src", "main.jsx"],
+  // Additional config references
   "references": [{ "path": "./tsconfig.node.json" }]
 }

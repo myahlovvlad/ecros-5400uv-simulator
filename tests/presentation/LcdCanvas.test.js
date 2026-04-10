@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getGlyphBitmap, normalizeFontChar } from "../../src/presentation/components/LcdCanvas.jsx";
+import { getGlyphBitmap, getGlyphVerticalMetrics, measureBitmapTextWidth, normalizeFontChar } from "../../src/presentation/components/LcdCanvas.jsx";
 
 function rowsToStrings(glyph) {
   return glyph.map((row) => row.map((value) => (value ? "#" : ".")).join(""));
@@ -22,10 +22,32 @@ describe("LcdCanvas bitmap font", () => {
     expect(glyph[1].some(Boolean)).toBe(true);
   });
 
-  it("uses corrected lowercase glyph shapes for б, й, ю", () => {
+  it("keeps latin a distinct from cyrillic а and applies corrected overrides", () => {
+    expect(rowsToStrings(getGlyphBitmap("a"))).toEqual([
+      ".....",
+      ".....",
+      ".###.",
+      "....#",
+      ".####",
+      "#...#",
+      "#..##",
+      ".##.#",
+    ]);
+    expect(rowsToStrings(getGlyphBitmap("\u0430"))).toEqual([
+      ".....",
+      ".....",
+      ".##..",
+      "#..#.",
+      "####.",
+      "#..#.",
+      "#..#.",
+      ".....",
+    ]);
+    expect(rowsToStrings(getGlyphBitmap("a"))).not.toEqual(rowsToStrings(getGlyphBitmap("\u0430")));
+
     expect(rowsToStrings(getGlyphBitmap("\u0431"))).toEqual([
-      "..##.",
-      ".#...",
+      ".###.",
+      "#....",
       "####.",
       "#...#",
       "####.",
@@ -38,10 +60,20 @@ describe("LcdCanvas bitmap font", () => {
       ".#.#.",
       ".....",
       "#...#",
-      "#..##",
+      "#...#",
       "#.#.#",
       "##..#",
       "#...#",
+    ]);
+    expect(rowsToStrings(getGlyphBitmap("\u043b"))).toEqual([
+      ".....",
+      ".....",
+      ".###.",
+      ".#..#",
+      "#...#",
+      "#...#",
+      "#...#",
+      ".....",
     ]);
     expect(rowsToStrings(getGlyphBitmap("\u044e"))).toEqual([
       "......",
@@ -55,36 +87,14 @@ describe("LcdCanvas bitmap font", () => {
     ]);
   });
 
-  it("uses lowered x-height for lowercase a, а, л", () => {
-    expect(rowsToStrings(getGlyphBitmap("a"))).toEqual([
-      ".....",
-      ".....",
-      ".....",
-      ".###.",
-      "....#",
-      ".####",
-      "#...#",
-      ".####",
-    ]);
-    expect(rowsToStrings(getGlyphBitmap("\u0430"))).toEqual([
-      ".....",
-      ".....",
-      ".....",
-      ".###.",
-      "....#",
-      ".####",
-      "#...#",
-      ".####",
-    ]);
-    expect(rowsToStrings(getGlyphBitmap("\u043b"))).toEqual([
-      ".....",
-      ".....",
-      ".....",
-      ".###.",
-      ".#..#",
-      "#...#",
-      "#...#",
-      "#...#",
-    ]);
+  it("keeps expected baseline alignment for lowercase body glyphs", () => {
+    expect(getGlyphVerticalMetrics("a").top).toBe(2);
+    expect(getGlyphVerticalMetrics("\u0430").top).toBe(2);
+    expect(getGlyphVerticalMetrics("\u043b").top).toBe(2);
+  });
+
+  it("measures visible width with proportional glyphs", () => {
+    expect(measureBitmapTextWidth("III")).toBeLessThan(measureBitmapTextWidth("WWW"));
+    expect(measureBitmapTextWidth("Нижняя грани")).toBeGreaterThan(0);
   });
 });

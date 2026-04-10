@@ -1,16 +1,10 @@
-/**
- * DeviceContext - контекст устройства
- * Предоставляет состояние устройства и действия всему приложению
- */
-
-import React, { createContext, useContext } from 'react';
-import { useDeviceController } from '../hooks/useDeviceController.js';
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useContext, useMemo } from "react";
+import { useDeviceController } from "../hooks/useDeviceController.js";
 
 const DeviceContext = createContext(null);
+DeviceContext.displayName = "DeviceContext";
 
-/**
- * Провайдер контекста устройства
- */
 export function DeviceProvider({ children, initialDeviceState = null }) {
   const deviceController = useDeviceController(initialDeviceState);
 
@@ -21,26 +15,17 @@ export function DeviceProvider({ children, initialDeviceState = null }) {
   );
 }
 
-/**
- * Хук для использования контекста устройства
- * @returns {ReturnType<typeof useDeviceController>}
- */
 export function useDevice() {
   const context = useContext(DeviceContext);
-  
+
   if (!context) {
-    throw new Error('useDevice must be used within a DeviceProvider');
+    throw new Error("useDevice must be used within a DeviceProvider");
   }
-  
+
   return context;
 }
 
-/**
- * Селектор для подписки на часть состояния
- * @param {Function} selector - Функция селектора
- * @returns {any} Выбранное значение
- */
 export function useDeviceSelector(selector) {
   const device = useDevice();
-  return selector(device.device);
+  return useMemo(() => selector(device.device), [device.device, selector]);
 }

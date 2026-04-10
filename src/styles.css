@@ -4,11 +4,12 @@
 
 @layer base {
   html {
-    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-family: "Bahnschrift", "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   }
 
   body {
     @apply bg-zinc-100 text-zinc-900 antialiased;
+    letter-spacing: 0.01em;
     margin: 0;
   }
 

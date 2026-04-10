@@ -1,5 +1,6 @@
 import {
   addNoise,
+  buildMultiWaveMeasurement,
   buildUsbExportPreview,
   fileExtByGroup,
   findNextPendingStep,
@@ -9,7 +10,17 @@ import {
   validateNumeric,
   validateWavelength,
 } from "../../domain/usecases/index.js";
-import { DARK_VALUES, SAMPLE_OPTIONS } from "../../domain/constants/index.js";
+import {
+  DARK_VALUES,
+  MULTI_WAVE_MAX_COUNT,
+  MULTI_WAVE_MIN_COUNT,
+  SAMPLE_OPTIONS,
+  WL_MIN,
+} from "../../domain/constants/index.js";
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
 
 export class DeviceService {
   performRezero(state) {
@@ -86,6 +97,33 @@ export class DeviceService {
     };
   }
 
+  performMultiWaveMeasure(state) {
+    const measurement = buildMultiWaveMeasurement(state);
+    const nextMeasurements = [...(state.multiWaveMeasurements ?? []), measurement].slice(-100);
+    const lastPoint = measurement.points.at(-1);
+
+    return {
+      newState: {
+        ...state,
+        multiWaveMeasurements: nextMeasurements,
+        multiWaveMeasurementCursor: nextMeasurements.length ? nextMeasurements.length - 1 : 0,
+        multiWaveGraphData: measurement.points.map((point) => ({
+          wavelength: point.wavelength,
+          value: point.value,
+          a: point.a,
+          t: point.t,
+          energy: point.energy,
+        })),
+        lastEnergy: lastPoint?.energy ?? state.lastEnergy,
+        lastComputedA: lastPoint?.a ?? state.lastComputedA,
+        lastComputedT: lastPoint?.t ?? state.lastComputedT,
+        screen: "multiWaveJournal",
+      },
+      logEntry: `multiwave -> run ${measurement.index} (${measurement.points.length} wl)`,
+      measurement,
+    };
+  }
+
   performDarkCurrent(state) {
     const values = DARK_VALUES.map((value, index) => addNoise(value + index * 2, 4));
     return {
@@ -134,14 +172,21 @@ export class DeviceService {
         screen: "fileList",
         fileListIndex: Math.max(0, Math.min(state.fileListIndex, nextFiles.length - 1)),
       },
-      logEntry: `delete -> ${selected.name}${selected.ext}`,
-      fileName: `${selected.name}${selected.ext}`,
+      logEntry: selected ? `delete -> ${selected.name}${selected.ext}` : "delete -> skipped",
+      fileName: selected ? `${selected.name}${selected.ext}` : "",
     };
   }
 
   exportFile(state, group, index) {
     const files = [...(state.files[group] || [])];
     const selected = files[index];
+    if (!selected) {
+      return {
+        newState: state,
+        logEntry: "export -> skipped",
+      };
+    }
+
     const nextFiles = [...files];
     nextFiles[index] = { ...selected, exported: true };
 
@@ -158,6 +203,7 @@ export class DeviceService {
         measurements: state.measurements,
         calibrationPlan: state.calibration.plan,
         kineticPoints: state.kineticPoints,
+        multiWaveMeasurements: state.multiWaveMeasurements ?? [],
         wavelength: state.wavelength,
         quantK: state.quantK,
         quantB: state.quantB,
@@ -190,6 +236,12 @@ export class DeviceService {
     const normalizedName = validation.value;
     const files = [...(state.files[group] || [])];
     const selected = files[index];
+    if (!selected) {
+      return {
+        newState: state,
+        error: { title: "НЕТ ФАЙЛА", body: "ВЫБЕРИТЕ ФАЙЛ", returnScreen: "fileList" },
+      };
+    }
 
     if (files.some((file, fileIndex) => fileIndex !== index && file.name === normalizedName)) {
       return {
@@ -315,10 +367,85 @@ export class DeviceService {
     };
   }
 
+  setMultiWaveCount(state, value) {
+    const validation = validateNumeric(value, MULTI_WAVE_MIN_COUNT, MULTI_WAVE_MAX_COUNT, "ЧИСЛО ВОЛН");
+    if (!validation.valid) {
+      return {
+        newState: state,
+        error: { title: "ОШИБКА", body: validation.error, returnScreen: "multiWaveMenu" },
+      };
+    }
+
+    const count = clamp(Math.round(validation.value), MULTI_WAVE_MIN_COUNT, MULTI_WAVE_MAX_COUNT);
+    const wavelengths = [...(state.multiWaveWavelengths ?? [])];
+    while (wavelengths.length < MULTI_WAVE_MAX_COUNT) {
+      wavelengths.push(WL_MIN + wavelengths.length * 100);
+    }
+
+    return {
+      newState: {
+        ...state,
+        multiWaveCount: count,
+        multiWaveSetupIndex: clamp(state.multiWaveSetupIndex ?? 0, 0, count - 1),
+        multiWaveWavelengths: wavelengths.slice(0, MULTI_WAVE_MAX_COUNT),
+        inputBuffer: "",
+        inputTarget: null,
+        screen: "multiWaveSetup",
+      },
+    };
+  }
+
+  setMultiWaveParallelCount(state, value) {
+    const validation = validateNumeric(value, MULTI_WAVE_MIN_COUNT, MULTI_WAVE_MAX_COUNT, "ПАРАЛ. ИЗМ.");
+    if (!validation.valid) {
+      return {
+        newState: state,
+        error: { title: "ОШИБКА", body: validation.error, returnScreen: "multiWaveMenu" },
+      };
+    }
+
+    return {
+      newState: {
+        ...state,
+        multiWaveParallelCount: clamp(Math.round(validation.value), MULTI_WAVE_MIN_COUNT, MULTI_WAVE_MAX_COUNT),
+        inputBuffer: "",
+        inputTarget: null,
+        screen: "multiWaveMenu",
+      },
+    };
+  }
+
+  setMultiWaveWavelength(state, targetIndex, value) {
+    const validation = validateWavelength(value);
+    if (!validation.valid) {
+      return {
+        newState: state,
+        error: { title: "ОШИБКА", body: validation.error, returnScreen: "multiWaveSetup" },
+      };
+    }
+
+    const wavelengths = [...(state.multiWaveWavelengths ?? [])];
+    wavelengths[targetIndex] = validation.value;
+
+    return {
+      newState: {
+        ...state,
+        multiWaveWavelengths: wavelengths,
+        inputBuffer: "",
+        inputTarget: null,
+        screen: "multiWaveSetup",
+      },
+      logEntry: `mw-wl[${targetIndex + 1}] ${validation.value.toFixed(1)}`,
+    };
+  }
+
   getSaveContext(state) {
     if (state.screen === "quantCoef") return { group: "КОЭФФИЦИЕНТ", ext: fileExtByGroup("КОЭФФИЦИЕНТ") };
     if (["kineticsRun", "kineticsGraph", "kineticsMenu"].includes(state.screen)) {
       return { group: "КИНЕТИКА", ext: fileExtByGroup("КИНЕТИКА") };
+    }
+    if (["multiWaveMenu", "multiWaveRun", "multiWaveJournal", "multiWaveGraph", "multiWaveSetup"].includes(state.screen)) {
+      return { group: "МНОГОВОЛН.", ext: fileExtByGroup("МНОГОВОЛН.") };
     }
     if (["calibrationStep", "calibrationJournal", "calibrationGraph", "calibrationPlan"].includes(state.screen)) {
       return { group: "ГРАДУИРОВКА", ext: fileExtByGroup("ГРАДУИРОВКА") };

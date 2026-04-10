@@ -1,0 +1,430 @@
+# ECROS 5400 UV Simulator — Сценарии переходов (USER FLOW MAP)
+
+> Файл содержит две диаграммы:
+> - **Блок 1 (Уровень B)** — операционная карта: все экраны + кнопки + guard-условия
+> - **Блок 2 (Уровень C)** — 6 пользовательских сценариев (шаги + псевдосостояния)
+
+---
+
+## Диаграмма 1 — Уровень B: Полная операционная карта
+
+```mermaid
+stateDiagram-v2
+    direction LR
+
+    [*] --> greeting
+
+    %% ─── ЗАГРУЗКА ───────────────────────────────────────────────────────
+    state "Загрузка" as BOOT {
+        greeting --> diagnostic : авто
+        diagnostic --> warmup : авто (тесты завершены)
+        warmup --> main : ESC / авто
+    }
+
+    %% ─── ГЛАВНОЕ МЕНЮ ────────────────────────────────────────────────────
+    main --> photometry           : ВВОД [mainIndex=0]
+    main --> quantMain            : ВВОД [mainIndex=1]
+    main --> kineticsMenu         : ВВОД [mainIndex=2]
+    main --> multiWaveMenu        : ВВОД [mainIndex=3]
+    main --> settings             : ВВОД [mainIndex=4]
+    main --> fileRoot             : ФАЙЛ
+
+    %% ─── ФАЙЛОВЫЙ МЕНЕДЖЕР ───────────────────────────────────────────────
+    fileRoot --> fileList         : ВВОД
+    fileRoot --> main             : ESC [previousScreen=main]
+    fileList --> fileActionMenu   : ВВОД [список не пуст]
+    fileList --> fileRoot         : ESC [previousScreen=main]
+    fileList --> previousScreen   : ESC [previousScreen≠main]
+    fileActionMenu --> warning    : ВВОД [action=ОТКРЫТЬ]
+    fileActionMenu --> input      : ВВОД [action=ПЕРЕИМЕНОВАТЬ]
+    fileActionMenu --> fileList   : ВВОД [action=УДАЛИТЬ] / ESC
+    fileActionMenu --> warning    : ВВОД [action=ЭКСПОРТ]
+
+    %% ─── УНИВЕРСАЛЬНЫЙ ВВОД ──────────────────────────────────────────────
+    input --> returnScreen        : ВВОД (применить значение)
+    input --> returnScreen        : ESC (сбросить)
+
+    %% ─── ПРЕДУПРЕЖДЕНИЕ ──────────────────────────────────────────────────
+    warning --> warningReturn     : ВВОД / ESC
+
+    %% ─── ДИАЛОГ СОХРАНЕНИЯ (input-режим saveName) ────────────────────────
+    saveDialog --> previousScreen : ВВОД [saveFile атомарно]
+    saveDialog --> previousScreen : ESC
+
+    %% ─── ФОТОМЕТРИЯ ──────────────────────────────────────────────────────
+    photometry --> input          : GOTOλ → inputTarget=wavelength
+    photometry --> photometryValue: SET
+    photometry --> photometryGraph: DOWN [курсор на посл. записи]
+    photometry --> saveDialog     : ФАЙЛ [есть результаты]
+    photometry --> fileList       : ФАЙЛ [нет результатов]
+    photometry --> main           : ESC
+    photometryValue --> input     : ВВОД [index=Парал. измерения]
+    photometryValue --> photometry: ВВОД [index=А|%Т|ЭНЕРГИЯ] / ESC
+    photometryGraph --> photometry: ESC
+    photometryGraph --> saveDialog: ФАЙЛ
+
+    %% ─── КОЛИЧЕСТВЕННЫЙ АНАЛИЗ ───────────────────────────────────────────
+    quantMain --> calibrationSetupStandards : ВВОД [index=0]
+    quantMain --> quantCoef       : ВВОД [index=1]
+    quantMain --> quantUnits      : ВВОД [index=2]
+    quantMain --> fileList        : ФАЙЛ
+    quantMain --> main            : ESC
+
+    quantUnits --> quantMain      : ВВОД / ESC
+
+    quantCoef --> warning         : SET
+    quantCoef --> input           : 1 → inputTarget=quantK
+    quantCoef --> input           : 2 → inputTarget=quantB
+    quantCoef --> input           : GOTOλ → inputTarget=wavelength
+    quantCoef --> saveDialog      : ФАЙЛ
+    quantCoef --> quantMain       : ESC
+
+    calibrationSetupStandards --> calibrationSetupParallels : ВВОД
+    calibrationSetupStandards --> quantMain                 : ESC
+    calibrationSetupParallels --> calibrationPlan           : ВВОД [buildCalibrationPlan]
+    calibrationSetupParallels --> calibrationSetupStandards : ESC
+
+    calibrationPlan --> calibrationStep    : ВВОД
+    calibrationPlan --> calibrationJournal : DOWN [есть результаты]
+    calibrationPlan --> fileList           : ФАЙЛ
+    calibrationPlan --> quantMain          : ESC
+
+    calibrationStep --> calibrationJournal : ВВОД/START→STOP [измерение]
+    calibrationStep --> saveDialog         : ФАЙЛ
+    calibrationStep --> calibrationPlan    : ESC
+
+    calibrationJournal --> calibrationStep  : ВВОД [есть незавер. шаги]
+    calibrationJournal --> calibrationGraph : ВВОД [все шаги завершены] / DOWN [конец]
+    calibrationJournal --> calibrationStep  : START→STOP [переизмерить]
+    calibrationJournal --> calibrationStep  : CLEAR [удалить]
+    calibrationJournal --> saveDialog       : ФАЙЛ
+    calibrationJournal --> calibrationPlan  : ESC
+
+    calibrationGraph --> calibrationJournal : ESC
+    calibrationGraph --> saveDialog         : ФАЙЛ
+
+    %% ─── КИНЕТИКА ────────────────────────────────────────────────────────
+    kineticsMenu --> input         : ВВОД [index=1] → inputTarget=kinUpper
+    kineticsMenu --> input         : ВВОД [index=2] → inputTarget=kinLower
+    kineticsMenu --> input         : ВВОД [index=3] → inputTarget=kinDuration
+    kineticsMenu --> kineticsRun   : ВВОД [index=4 ПУСК] startKinetics
+    kineticsMenu --> input         : GOTOλ → inputTarget=wavelength
+    kineticsMenu --> fileList      : ФАЙЛ
+    kineticsMenu --> main          : ESC
+
+    kineticsRun --> kineticsGraph  : DOWN
+    kineticsRun --> kineticsMenu   : START→STOP [stopKinetics] / ESC
+    kineticsRun --> saveDialog     : ФАЙЛ
+    kineticsGraph --> kineticsRun  : ESC
+    kineticsGraph --> saveDialog   : ФАЙЛ
+
+    %% ─── МНОГОВОЛНОВОЙ АНАЛИЗ ────────────────────────────────────────────
+    multiWaveMenu --> input            : ВВОД [Длины волн] → inputTarget=multiWaveCount
+    multiWaveMenu --> multiWaveSetup   : (после ввода кол-ва)
+    multiWaveMenu --> input            : ВВОД [Парал. изм.] → inputTarget=parallelCount
+    multiWaveMenu --> photometryValue  : ВВОД [Аналит. сигнал]
+    multiWaveMenu --> quantUnits       : ВВОД [Единицы]
+    multiWaveMenu --> multiWaveRun     : ВВОД [ПУСК] startMultiWave
+    multiWaveMenu --> input            : GOTOλ
+    multiWaveMenu --> fileList         : ФАЙЛ
+    multiWaveMenu --> main             : ESC
+
+    multiWaveSetup --> input           : ВВОД [строка λN]
+    multiWaveSetup --> multiWaveMenu   : ESC
+
+    multiWaveRun --> multiWaveJournal  : ВВОД/START→STOP [измерение всех λ]
+    multiWaveRun --> saveDialog        : ФАЙЛ [есть результаты]
+    multiWaveRun --> fileList          : ФАЙЛ [нет результатов]
+    multiWaveRun --> multiWaveMenu     : ESC
+
+    multiWaveJournal --> multiWaveRun  : ВВОД / ESC
+    multiWaveJournal --> multiWaveGraph: DOWN [конец]
+    multiWaveJournal --> saveDialog    : ФАЙЛ
+    multiWaveGraph --> multiWaveJournal: ESC
+    multiWaveGraph --> saveDialog      : ФАЙЛ
+
+    %% ─── НАСТРОЙКИ ───────────────────────────────────────────────────────
+    settings --> warning    : ВВОД [index=2 Темн. ток]
+    settings --> warning    : ВВОД [index=3 Калибр. λ]
+    settings --> version    : ВВОД [index=4]
+    settings --> greeting   : ВВОД [index=5 Сброс → resetAll]
+    settings --> main       : ESC
+
+    version --> settings    : ВВОД / ESC
+```
+
+---
+
+## Диаграмма 2 — Уровень C: Сценарий 1 — Одиночное фотометрическое измерение
+
+```mermaid
+sequenceDiagram
+    actor Пользователь
+    participant main as main
+    participant photometry as photometry
+    participant input as input [inputTarget=wavelength]
+    participant busy as busy-оверлей
+
+    Пользователь->>main: ВВОД (mainIndex=0)
+    main->>photometry: screen → photometry
+
+    Пользователь->>photometry: GOTOλ
+    photometry->>input: screen → input\n(inputBuffer=452.5, returnScreen=photometry)
+
+    Пользователь->>input: 4, 5, 2 (ввод λ=452.0)
+    Пользователь->>input: ВВОД
+    input->>busy: busy=true, busyLabel="УСТАНОВКА Λ"
+    Note over busy: swl(452.0) → ответ прибора
+    busy->>photometry: busy=false, wavelength=452.0
+
+    Пользователь->>photometry: НОЛЬ
+    Note over photometry: performRezero() — атомарно\nA=0.000, оверлей "НОЛЬ"
+
+    Пользователь->>photometry: START/STOP
+    Note over photometry: performPhotometryMeasure() — атомарно\nдобавить запись [1-1, 452.0, 0.324]
+
+    Пользователь->>photometry: ФАЙЛ
+    photometry->>photometry: openSaveDialog("ФОТОМЕТРИЯ", "photometry")
+    Note over photometry: screen → saveDialog\n(inputTarget=saveName)
+    Пользователь->>photometry: ввести "analys1" + ВВОД
+    Note over photometry: saveFile атомарно → вернуться в photometry
+```
+
+---
+
+## Диаграмма 3 — Уровень C: Сценарий 2 — Градуировочная кривая (4 стандарта × 2 параллели)
+
+```mermaid
+sequenceDiagram
+    actor Пользователь
+    participant main as main
+    participant qm as quantMain
+    participant ss as calibrationSetupStandards
+    participant sp as calibrationSetupParallels
+    participant plan as calibrationPlan
+    participant step as calibrationStep
+    participant jour as calibrationJournal
+    participant graph as calibrationGraph
+
+    Пользователь->>main: ВВОД (mainIndex=1)
+    main->>qm: screen → quantMain
+    Пользователь->>qm: ВВОД (index=0 Новая градуир.)
+    qm->>ss: screen → calibrationSetupStandards
+
+    Пользователь->>ss: UP/DOWN → 4 стандарта; ВВОД
+    ss->>sp: screen → calibrationSetupParallels
+
+    Пользователь->>sp: UP/DOWN → 2 параллели; ВВОД
+    Note over sp: buildCalibrationPlan(4, 2) → 8 шагов
+    sp->>plan: screen → calibrationPlan
+
+    loop 8 шагов (Ст1/Пар1 ... Ст4/Пар2)
+        Пользователь->>plan: ВВОД
+        plan->>step: screen → calibrationStep
+
+        Пользователь->>step: НОЛЬ (опционально)
+        Пользователь->>step: START/STOP
+        Note over step: performCalibrationMeasure() — атомарно
+        step->>jour: screen → calibrationJournal
+
+        alt Есть незавершённые шаги
+            Пользователь->>jour: ВВОД
+            jour->>step: перейти к следующему шагу
+        else Все 8 шагов завершены
+            Пользователь->>jour: ВВОД
+            jour->>graph: screen → calibrationGraph
+        end
+    end
+
+    Пользователь->>graph: ФАЙЛ → сохранить .std
+```
+
+---
+
+## Диаграмма 4 — Уровень C: Сценарий 3 — Кинетика (запуск, остановка, сохранение)
+
+```mermaid
+sequenceDiagram
+    actor Пользователь
+    participant main as main
+    participant km as kineticsMenu
+    participant input as input
+    participant run as kineticsRun
+    participant graph as kineticsGraph
+    participant save as saveDialog
+
+    Пользователь->>main: ВВОД (mainIndex=2)
+    main->>km: screen → kineticsMenu
+
+    Пользователь->>km: DOWN (index→ОБЩЕЕ ВРЕМЯ); ВВОД
+    km->>input: inputTarget=kinDuration, returnScreen=kineticsMenu
+    Пользователь->>input: 1, 2, 0; ВВОД (120 с)
+    input->>km: kineticDuration=120
+
+    Пользователь->>km: DOWN (index→ПУСК); ВВОД
+    Note over km: startKinetics() — атомарно
+    km->>run: screen → kineticsRun
+
+    loop каждые 500 мс
+        Note over run: measureSample() → добавить точку
+    end
+
+    Пользователь->>run: DOWN
+    run->>graph: screen → kineticsGraph
+
+    Пользователь->>graph: ESC
+    graph->>run: screen → kineticsRun
+
+    Пользователь->>run: ФАЙЛ
+    run->>save: openSaveDialog("КИНЕТИКА", "kineticsRun")
+    Пользователь->>save: ввести "kin01"; ВВОД
+    Note over save: saveFile .kin атомарно
+    save->>run: вернуться в kineticsRun
+
+    Пользователь->>run: START/STOP
+    Note over run: stopKinetics() — атомарно
+    run->>km: screen → kineticsMenu
+```
+
+---
+
+## Диаграмма 5 — Уровень C: Сценарий 4 — Коэффициентный режим (ввод K и B)
+
+```mermaid
+sequenceDiagram
+    actor Пользователь
+    participant main as main
+    participant qm as quantMain
+    participant coef as quantCoef
+    participant input as input
+    participant warn as warning
+    participant save as saveDialog
+
+    Пользователь->>main: ВВОД (mainIndex=1)
+    main->>qm: screen → quantMain
+    Пользователь->>qm: DOWN (index=1 Коэффициент); ВВОД
+    qm->>coef: screen → quantCoef
+
+    Пользователь->>coef: SET
+    coef->>warn: showWarning("1=К 2=Б")
+    Пользователь->>warn: ВВОД
+    warn->>coef: вернуться (warningReturn=quantCoef)
+
+    Пользователь->>coef: 1
+    coef->>input: inputTarget=quantK, returnScreen=quantCoef
+    Пользователь->>input: 0, ., 0, 2, 8; ВВОД (K=0.028)
+    input->>coef: quantK=0.028
+
+    Пользователь->>coef: 2
+    coef->>input: inputTarget=quantB, returnScreen=quantCoef
+    Пользователь->>input: 0, ., 0, 0, 1; ВВОД (B=0.001)
+    input->>coef: quantB=0.001
+
+    Пользователь->>coef: НОЛЬ
+    Note over coef: performRezero() — атомарно
+
+    Пользователь->>coef: START/STOP
+    Note over coef: performPhotometryMeasure() — C=K*A+B
+
+    Пользователь->>coef: ФАЙЛ
+    coef->>save: openSaveDialog("КОЭФФИЦИЕНТ", "quantCoef")
+    Пользователь->>save: "coef_1"; ВВОД
+    save->>coef: вернуться
+```
+
+---
+
+## Диаграмма 6 — Уровень C: Сценарий 5 — Многоволновой анализ (3 длины волны)
+
+```mermaid
+sequenceDiagram
+    actor Пользователь
+    participant main as main
+    participant mwm as multiWaveMenu
+    participant input as input
+    participant setup as multiWaveSetup
+    participant run as multiWaveRun
+    participant jour as multiWaveJournal
+    participant graph as multiWaveGraph
+    participant save as saveDialog
+
+    Пользователь->>main: ВВОД (mainIndex=3)
+    main->>mwm: screen → multiWaveMenu
+
+    Пользователь->>mwm: ВВОД (Длины волн)
+    mwm->>input: inputTarget=multiWaveCount, returnScreen=multiWaveMenu
+    Пользователь->>input: 3; ВВОД
+    input->>mwm: multiWaveCount=3 → screen → multiWaveSetup
+    mwm->>setup: screen → multiWaveSetup
+
+    loop N=3 строки (λ1, λ2, λ3)
+        Пользователь->>setup: ВВОД (выбрать строку λN)
+        setup->>input: inputTarget=wavelength_N
+        Пользователь->>input: ввести значение; ВВОД
+        input->>setup: λN установлена
+    end
+
+    Пользователь->>setup: ESC
+    setup->>mwm: вернуться
+
+    Пользователь->>mwm: ВВОД (ПУСК)
+    Note over mwm: startMultiWave() — атомарно
+    mwm->>run: screen → multiWaveRun
+
+    Пользователь->>run: НОЛЬ
+    Note over run: performRezero()
+
+    Пользователь->>run: START/STOP
+    Note over run: последовательно измерить λ1 → λ2 → λ3\nатомарно (busy-оверлей на каждом переходе)
+    run->>jour: добавить строку в журнал
+
+    Пользователь->>jour: DOWN (конец журнала)
+    jour->>graph: screen → multiWaveGraph
+
+    Пользователь->>graph: ФАЙЛ
+    graph->>save: openSaveDialog("МНОГОВОЛН.", "multiWaveJournal")
+    Пользователь->>save: "mw_01"; ВВОД
+    save->>graph: вернуться
+    Пользователь->>graph: ESC
+    graph->>jour: вернуться
+```
+
+---
+
+## Диаграмма 7 — Уровень C: Сценарий 6 — Работа с файловым менеджером (переименование + экспорт)
+
+```mermaid
+sequenceDiagram
+    actor Пользователь
+    participant ph as photometry
+    participant root as fileRoot
+    participant list as fileList
+    participant fam as fileActionMenu
+    participant input as input
+    participant warn as warning
+
+    Пользователь->>ph: ФАЙЛ [нет результатов]
+    ph->>list: openFileManager("ФОТОМЕТРИЯ", "browse", "photometry")
+
+    Пользователь->>list: выбрать "analys1.qua"; ВВОД
+    list->>fam: screen → fileActionMenu
+
+    Пользователь->>fam: DOWN (Переименовать); ВВОД
+    fam->>input: inputTarget=renameFile, returnScreen=fileActionMenu
+    Пользователь->>input: "analys1_v2"; ВВОД
+    Note over input: renameFile() атомарно
+    input->>fam: вернуться
+
+    Пользователь->>fam: DOWN (Экспорт); ВВОД
+    Note over fam: exportFile() — отправить на USB1
+    fam->>warn: showWarning("ЭКСПОРТ: ФАЙЛ ОТПРАВЛЕН НА USB1")
+    Пользователь->>warn: ВВОД
+    warn->>list: warningReturn=fileList
+
+    Пользователь->>list: ESC
+    list->>ph: previousScreen=photometry
+```
+
+---
+
+*Конец файла USERFLOW.mmd*

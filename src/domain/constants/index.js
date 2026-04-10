@@ -1,3 +1,7 @@
+/**
+ * Domain constants for the ECROS-5400UV simulator.
+ */
+
 export const LCD_W = 128;
 export const LCD_H = 64;
 export const CHAR_H = 8;
@@ -50,13 +54,28 @@ export const CLI_COMMANDS = [
   "diag",
 ];
 
-export const MENU_MAIN = ["ФОТОМЕТРИЯ", "КОЛИЧ. АНАЛИЗ", "КИНЕТИКА", "НАСТРОЙКИ"];
+export const MENU_MAIN = [
+  "ФОТОМЕТРИЯ",
+  "КОЛИЧ. АНАЛИЗ",
+  "КИНЕТИКА",
+  "МНОГОВОЛН.",
+  "НАСТРОЙКИ",
+];
+
 export const MENU_PHOTOMETRY_VALUE = ["А", "%Т", "ЭНЕРГИЯ"];
+
 export const MENU_QUANT = ["НОВАЯ ГРАДУИР.", "КОЭФФИЦИЕНТ", "ЕДИНИЦЫ"];
+
 export const MENU_KINETICS = ["ВЕЛИЧИНА", "ВЕРХ. ГРАНИЦА", "НИЖ. ГРАНИЦА", "ОБЩЕЕ ВРЕМЯ", "ПУСК"];
+
+export const MENU_MULTI_WAVE = ["ДЛИНЫ ВОЛН", "ПАРАЛ. ИЗМ.", "АНАЛИТ. СИГН.", "ЕДИНИЦЫ", "ПУСК"];
+
 export const MENU_SETTINGS = ["Д2-ЛАМПА", "В-ЛАМПА", "ТЕМНОВОЙ ТОК", "КАЛИБР. ЛЯМ", "ВЕРСИЯ", "СБРОС"];
-export const FILE_GROUPS = ["ФОТОМЕТРИЯ", "ГРАДУИРОВКА", "КОЭФФИЦИЕНТ", "КИНЕТИКА"];
+
+export const FILE_GROUPS = ["ФОТОМЕТРИЯ", "ГРАДУИРОВКА", "КОЭФФИЦИЕНТ", "КИНЕТИКА", "МНОГОВОЛН."];
+
 export const FILE_ACTIONS = ["ОТКРЫТЬ", "ПЕРЕИМЕНОВАТЬ", "УДАЛИТЬ", "ЭКСПОРТ"];
+
 export const UNITS = ["МКГ/Л", "МГ/Л", "Г/Л", "МЛ/Л", "МОЛЬ/Л", "МГ/КГ", "%", "ТСУ"];
 
 export const SAMPLE_OPTIONS = [
@@ -72,6 +91,7 @@ export const FILE_EXTENSIONS = {
   ГРАДУИРОВКА: ".std",
   КОЭФФИЦИЕНТ: ".cof",
   КИНЕТИКА: ".kin",
+  "МНОГОВОЛН.": ".mwv",
 };
 
 export const VALID_FILE_RE = /^[A-Za-zА-Яа-я0-9 _.-]+$/;
@@ -82,3 +102,5 @@ export const DIAG_COMPLETE_DELAY_MS = 500;
 export const WARMUP_STEP_MS = 80;
 export const WARMUP_DURATION_SEC = 15 * 60;
 export const KINETIC_INTERVAL_MS = 500;
+export const MULTI_WAVE_MIN_COUNT = 1;
+export const MULTI_WAVE_MAX_COUNT = 5;

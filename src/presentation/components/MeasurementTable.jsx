@@ -14,9 +14,10 @@ export function MeasurementTable({ measurements, cursor, screen, onGenerateTest 
           <button
             type="button"
             onClick={onGenerateTest}
+            title="Создаёт демонстрационный набор измерений по нескольким длинам волн, чтобы быстро проверить таблицу и графики."
             className="rounded-xl border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50"
           >
-            Сгенерировать тест
+            Создать демо-измерения
           </button>
         ) : null}
       </div>

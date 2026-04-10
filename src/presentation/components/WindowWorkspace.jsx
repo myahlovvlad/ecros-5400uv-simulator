@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const WINDOW_MIN_W = 260;

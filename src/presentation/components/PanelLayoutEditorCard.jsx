@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useMemo } from "react";
 import { getPanelSelectionBounds, getVisiblePanelElementIds } from "./InstrumentPanel.jsx";
 
@@ -137,7 +138,11 @@ export function PanelLayoutEditorCard({
 
       <div className="space-y-4">
         {LAYOUT_FIELDS.map((field) => (
-          <label key={field.key} className="block">
+          <label
+            key={field.key}
+            className={`block transition ${isCanvasMode ? "" : "opacity-45"}`}
+            title={isCanvasMode ? field.label : "Переключитесь в режим холста, чтобы менять геометрию панели."}
+          >
             <div className="mb-1 flex items-center justify-between text-sm">
               <span className="text-zinc-700">{field.label}</span>
               <span className="font-medium text-zinc-500">{layout[field.key]}</span>
@@ -150,8 +155,13 @@ export function PanelLayoutEditorCard({
               disabled={!isCanvasMode}
               value={layout[field.key]}
               onChange={(event) => onChange(field.key, field.step < 1 ? parseFloat(event.target.value) : Number(event.target.value))}
-              className="w-full accent-emerald-600"
+              className="w-full cursor-pointer accent-emerald-600 disabled:cursor-not-allowed"
             />
+            {!isCanvasMode ? (
+              <div className="mt-1 text-[11px] text-zinc-400">
+                Доступно только в режиме холста.
+              </div>
+            ) : null}
           </label>
         ))}
       </div>

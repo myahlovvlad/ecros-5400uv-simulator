@@ -12,6 +12,15 @@ export class CliService {
 
     const reply = (line) => log(String(line));
     const replyBlank = () => log("");
+    const replyError = (message) => reply(`error: ${message}`);
+    const parseNumberArg = (value) => {
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const parseIntegerArg = (value) => {
+      const parsed = Number.parseInt(value, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
 
     if (op === "help") {
       reply("Command List:");
@@ -34,7 +43,10 @@ export class CliService {
     if (op === "getwl") return reply(` ${state.wavelength.toFixed(1)}`);
 
     if (op === "swl" || op === "swm") {
-      const wavelength = clamp(parseFloat(arg || String(state.wavelength)), WL_MIN, WL_MAX);
+      const parsed = parseNumberArg(arg);
+      if (parsed === null) return replyError("wavelength argument is required");
+      if (parsed < WL_MIN || parsed > WL_MAX) return replyError(`wavelength must be ${WL_MIN}-${WL_MAX} nm`);
+      const wavelength = clamp(parsed, WL_MIN, WL_MAX);
       setState((d) => ({ ...d, wavelength }));
       await setBusy(op === "swl" ? "УСТАНОВКА ЛЯМ" : "ПОВОРОТ РЕШЕТКИ", op === "swl" ? 900 : 650);
       return replyBlank();
@@ -62,7 +74,10 @@ export class CliService {
     }
 
     if (op === "ge") {
-      const count = clamp(parseInt(arg || "1", 10) || 1, 1, 8);
+      const parsed = arg ? parseIntegerArg(arg) : 1;
+      if (parsed === null) return replyError("count must be an integer 1..8");
+      if (parsed < 1 || parsed > 8) return replyError("count must be in range 1..8");
+      const count = clamp(parsed, 1, 8);
       for (let index = 0; index < count; index += 1) {
         const measurement = measureSample({
           sample: state.currentSample,
@@ -78,7 +93,10 @@ export class CliService {
     }
 
     if (op === "sa") {
-      const gain = clamp(parseInt(arg || "1", 10) || 1, GAIN_MIN, GAIN_MAX);
+      const parsed = parseIntegerArg(arg);
+      if (parsed === null) return replyError(`gain must be an integer ${GAIN_MIN}..${GAIN_MAX}`);
+      if (parsed < GAIN_MIN || parsed > GAIN_MAX) return replyError(`gain must be in range ${GAIN_MIN}..${GAIN_MAX}`);
+      const gain = clamp(parsed, GAIN_MIN, GAIN_MAX);
       setState((d) => ({ ...d, gain }));
       return replyBlank();
     }
@@ -89,7 +107,8 @@ export class CliService {
     }
 
     if (op === "setlampwl") {
-      const value = parseFloat(arg || String(state.lampWL));
+      const value = parseNumberArg(arg);
+      if (value === null) return replyError("lamp wavelength argument is required");
       setState((d) => ({ ...d, lampWL: value }));
       return replyBlank();
     }
@@ -104,13 +123,16 @@ export class CliService {
     if (op === "getslip") return reply(state.slip);
 
     if (op === "setslip") {
-      const slip = clamp(parseInt(arg || "2", 10) || 2, 1, 4);
+      const parsed = parseIntegerArg(arg);
+      if (parsed === null) return replyError("slip must be an integer 1..4");
+      if (parsed < 1 || parsed > 4) return replyError("slip must be in range 1..4");
+      const slip = clamp(parsed, 1, 4);
       setState((d) => ({ ...d, slip }));
       return replyBlank();
     }
 
     if (op === "getsampler") return reply(state.sampler);
-    if (op === "setsampler") return reply("Error");
+    if (op === "setsampler") return replyError("setsampler is not supported in the simulator");
 
     if (op === "adjustwl") {
       await setBusy("КАЛИБРОВКА ЛЯМБДА", 1600);
@@ -124,6 +146,6 @@ export class CliService {
 
     if (op === "setfilter" || op === "setlamp") return replyBlank();
     if (op === "gettype") return reply("ECROS-5400UV");
-    return reply("Unknown command");
+    return replyError("unknown command");
   }
 }

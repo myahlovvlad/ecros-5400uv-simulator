@@ -2,9 +2,11 @@
  * ThemeContext - контекст темы оформления
  */
 
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const ThemeContext = createContext(null);
+ThemeContext.displayName = "ThemeContext";
 
 const THEMES = {
   light: {

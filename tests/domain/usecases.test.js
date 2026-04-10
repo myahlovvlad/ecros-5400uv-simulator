@@ -101,12 +101,14 @@ describe("fileExtByGroup", () => {
     expect(fileExtByGroup("ГРАДУИРОВКА")).toBe(".std");
     expect(fileExtByGroup("КОЭФФИЦИЕНТ")).toBe(".cof");
     expect(fileExtByGroup("КИНЕТИКА")).toBe(".kin");
+    expect(fileExtByGroup("МНОГОВОЛН.")).toBe(".mwv");
   });
 });
 
 describe("seedFiles", () => {
-  it("returns four file groups", () => {
-    expect(Object.keys(seedFiles())).toHaveLength(4);
+  it("returns five file groups including multiwave", () => {
+    expect(Object.keys(seedFiles())).toHaveLength(5);
+    expect(Object.keys(seedFiles())).toContain("МНОГОВОЛН.");
   });
 });
 
@@ -138,6 +140,7 @@ describe("buildUsbExportPreview", () => {
       measurements: [{ index: 1, wavelength: 540, energy: 123, a: 0.1, t: 98.2 }],
       calibrationPlan: [],
       kineticPoints: [],
+      multiWaveMeasurements: [],
       wavelength: 540,
       quantK: 1,
       quantB: 0,

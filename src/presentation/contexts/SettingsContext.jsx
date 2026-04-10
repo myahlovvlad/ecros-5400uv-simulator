@@ -2,9 +2,11 @@
  * SettingsContext - контекст настроек приложения
  */
 
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const SettingsContext = createContext(null);
+SettingsContext.displayName = "SettingsContext";
 
 const DEFAULT_SETTINGS = {
   language: 'ru',

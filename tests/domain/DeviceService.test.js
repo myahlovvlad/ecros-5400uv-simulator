@@ -25,6 +25,14 @@ describe("DeviceService", () => {
     expect(newState.measurements[0].index).toBe(1);
   });
 
+  it("performMultiWaveMeasure appends a multiwave run and graph data", () => {
+    const { newState, measurement } = service.performMultiWaveMeasure(initialState);
+    expect(newState.multiWaveMeasurements).toHaveLength(1);
+    expect(newState.multiWaveMeasurements[0].index).toBe(1);
+    expect(newState.multiWaveGraphData).toHaveLength(initialState.multiWaveCount);
+    expect(measurement.points).toHaveLength(initialState.multiWaveCount);
+  });
+
   it("deleteFile removes file from the group", () => {
     const { newState, logEntry } = service.deleteFile(initialState, "ФОТОМЕТРИЯ", 0);
     expect(newState.files["ФОТОМЕТРИЯ"]).toHaveLength(initialState.files["ФОТОМЕТРИЯ"].length - 1);
@@ -42,6 +50,7 @@ describe("DeviceService", () => {
     expect(service.getSaveContext({ screen: "quantCoef" }).ext).toBe(".cof");
     expect(service.getSaveContext({ screen: "kineticsRun" }).ext).toBe(".kin");
     expect(service.getSaveContext({ screen: "calibrationStep" }).ext).toBe(".std");
+    expect(service.getSaveContext({ screen: "multiWaveRun" }).ext).toBe(".mwv");
     expect(service.getSaveContext({ screen: "unknown" }).ext).toBe(".qua");
   });
 

@@ -21,8 +21,15 @@ import { PanelLayoutEditorCard, DEFAULT_PANEL_LAYOUT } from "./PanelLayoutEditor
 import { ScenarioFlowMap } from "./ScenarioFlowMap.jsx";
 import { UsbExportPanel } from "./UsbExportPanel.jsx";
 import { WindowWorkspace, normalizeWindowLayout } from "./WindowWorkspace.jsx";
+import { transitionToScreen } from "../../application/services/screenFlow.js";
 import { getLcdRows } from "../../infrastructure/adapters/LcdRenderer.js";
-import { buildCalibrationPlan, measureSample } from "../../domain/usecases/index.js";
+import {
+  buildCalibrationPlan,
+  initialDevice,
+  measureSample,
+  normalizeLogLine,
+  normalizeMultiWaveWavelengths,
+} from "../../domain/usecases/index.js";
 
 const WORKSPACE_PREFS_KEY = "ecros_workspace_prefs_v2";
 
@@ -32,7 +39,7 @@ const DEFAULT_WINDOWS = [
   { id: "lcdEditor", title: "Редактор LCD", x: 1470, y: 20, w: 420, h: 560 },
   { id: "cli", title: "CLI-эмулятор", x: 1030, y: 540, w: 420, h: 420 },
   { id: "usb", title: "USB-накопитель", x: 1470, y: 600, w: 420, h: 260 },
-  { id: "navigation", title: "Навигация и файлы", x: 20, y: 950, w: 420, h: 320 },
+  { id: "navigation", title: "Навигация и аудит UI", x: 20, y: 950, w: 420, h: 420 },
   { id: "labelEditor", title: "Редактор надписей", x: 460, y: 950, w: 420, h: 520 },
   { id: "cCode", title: "Генератор C-кода", x: 900, y: 980, w: 520, h: 420 },
   { id: "deviceState", title: "Состояние прибора", x: 20, y: 1310, w: 340, h: 260 },
@@ -62,7 +69,56 @@ function loadWorkspacePrefs() {
   }
 }
 
+function getPersistedDeviceState(device) {
+  return {
+    ...device,
+    busy: false,
+    busyLabel: initialDevice().busyLabel,
+  };
+}
+
+function restorePersistedDeviceState(snapshot, fallbackScreen = null) {
+  if (!snapshot || typeof snapshot !== "object") {
+    return fallbackScreen
+      ? transitionToScreen(initialDevice(), fallbackScreen, { previousScreen: fallbackScreen })
+      : null;
+  }
+
+  const base = initialDevice();
+  const next = {
+    ...base,
+    ...snapshot,
+    busy: false,
+    busyLabel: base.busyLabel,
+    logLines: Array.isArray(snapshot.logLines) ? snapshot.logLines.map(normalizeLogLine) : base.logLines,
+    fileContext: { ...base.fileContext, ...(snapshot.fileContext ?? {}) },
+    saveMeta: { ...base.saveMeta, ...(snapshot.saveMeta ?? {}) },
+    calibration: { ...base.calibration, ...(snapshot.calibration ?? {}) },
+  };
+
+  const standards = Math.max(1, Math.min(9, Number(next.calibration.standards) || base.calibration.standards));
+  const parallels = Math.max(1, Math.min(9, Number(next.calibration.parallels) || base.calibration.parallels));
+  next.calibration.standards = standards;
+  next.calibration.parallels = parallels;
+  next.calibration.plan = Array.isArray(snapshot.calibration?.plan) && snapshot.calibration.plan.length
+    ? snapshot.calibration.plan
+    : buildCalibrationPlan(standards, parallels);
+  next.multiWaveCount = Math.max(1, Math.min(5, Number(snapshot.multiWaveCount) || base.multiWaveCount));
+  next.multiWaveParallelCount = Math.max(1, Math.min(5, Number(snapshot.multiWaveParallelCount) || base.multiWaveParallelCount));
+  next.multiWaveWavelengths = normalizeMultiWaveWavelengths(snapshot.multiWaveWavelengths, 5);
+  next.multiWaveMeasurements = Array.isArray(snapshot.multiWaveMeasurements) ? snapshot.multiWaveMeasurements : [];
+  next.multiWaveGraphData = Array.isArray(snapshot.multiWaveGraphData) ? snapshot.multiWaveGraphData : [];
+  next.multiWaveMeasurementCursor = Math.max(0, Math.min(next.multiWaveMeasurements.length - 1, Number(snapshot.multiWaveMeasurementCursor) || 0));
+
+  if (typeof fallbackScreen === "string" && !snapshot.screen) {
+    return transitionToScreen(next, fallbackScreen, { previousScreen: fallbackScreen });
+  }
+
+  return next;
+}
+
 function serializeWorkspacePrefs({
+  deviceState,
   mode,
   currentScreen,
   panelLabels,
@@ -75,6 +131,7 @@ function serializeWorkspacePrefs({
   windows,
 }) {
   return JSON.stringify({
+    deviceState,
     mode,
     currentScreen,
     panelLabels,
@@ -124,6 +181,7 @@ function AppContent() {
   const resolvedLabels = useMemo(() => ({ ...PANEL_LABEL_DEFAULTS, ...panelLabels }), [panelLabels]);
   const lcdRowsOverride = lcdEditorEnabled ? lcdEditorRows : null;
   const previewRows = useMemo(() => lcdRowsOverride ?? liveLcdRows, [lcdRowsOverride, liveLcdRows]);
+  const persistedDeviceState = useMemo(() => getPersistedDeviceState(device), [device]);
 
   useEffect(() => {
     if (!lcdEditorEnabled) {
@@ -137,6 +195,7 @@ function AppContent() {
   }, []);
 
   const currentSnapshot = useMemo(() => serializeWorkspacePrefs({
+    deviceState: persistedDeviceState,
     mode,
     currentScreen: device.screen,
     panelLabels,
@@ -147,7 +206,7 @@ function AppContent() {
     displayPresets,
     panelLayout,
     windows,
-  }), [mode, device.screen, panelLabels, panelElementLayout, lcdEditorEnabled, lcdEditorMode, lcdEditorRows, displayPresets, panelLayout, windows]);
+  }), [persistedDeviceState, mode, device.screen, panelLabels, panelElementLayout, lcdEditorEnabled, lcdEditorMode, lcdEditorRows, displayPresets, panelLayout, windows]);
 
   const [savedSnapshot, setSavedSnapshot] = useState(() => currentSnapshot);
   const canSave = currentSnapshot !== savedSnapshot;
@@ -171,6 +230,7 @@ function AppContent() {
 
   const saveAll = useCallback(() => {
     const payload = {
+      deviceState: persistedDeviceState,
       mode,
       currentScreen: device.screen,
       panelLabels,
@@ -191,7 +251,7 @@ function AppContent() {
       console.error("Failed to save workspace preferences:", error);
       flashStatus("Ошибка сохранения");
     }
-  }, [mode, device.screen, panelLabels, panelElementLayout, lcdEditorEnabled, lcdEditorMode, lcdEditorRows, displayPresets, panelLayout, windows, flashStatus]);
+  }, [persistedDeviceState, mode, device.screen, panelLabels, panelElementLayout, lcdEditorEnabled, lcdEditorMode, lcdEditorRows, displayPresets, panelLayout, windows, flashStatus]);
 
   const saveDisplayPreset = useCallback((name) => {
     const preset = {
@@ -206,6 +266,7 @@ function AppContent() {
 
   const commitLcdChanges = useCallback(() => {
     const payload = {
+      deviceState: persistedDeviceState,
       mode,
       currentScreen: device.screen,
       panelLabels,
@@ -223,6 +284,7 @@ function AppContent() {
     setLcdEditorSource("Зафиксировано");
     persistWorkspace(payload, "Изменения дисплея зафиксированы");
   }, [
+    persistedDeviceState,
     mode,
     device.screen,
     panelLabels,
@@ -307,43 +369,12 @@ function AppContent() {
     setDevice((current) => {
       if (!screen || current.screen === screen) return current;
 
-      const next = {
-        ...current,
-        previousScreen: current.screen,
-        screen,
-      };
-
-      if (screen === "input") {
-        return {
-          ...next,
-          inputTarget: current.inputTarget || "wavelength",
-          inputBuffer: current.inputBuffer || String(current.wavelength),
-          dialogTitle: current.dialogTitle || "ВВОД ДАННЫХ",
-          returnScreen: current.screen,
-        };
-      }
-
-      if (screen === "saveDialog") {
-        return {
-          ...next,
-          inputTarget: "saveName",
-          inputBuffer: "",
-          returnScreen: current.screen,
-        };
-      }
-
-      if (screen === "warning") {
-        return {
-          ...next,
-          warning: current.warning || {
-            title: "ПРЕДУПРЕЖДЕНИЕ",
-            body: "ПЕРЕХОД ИЗ КАРТЫ СЦЕНАРИЕВ",
-          },
-          warningReturn: current.screen,
-        };
-      }
-
-      return next;
+      return transitionToScreen(current, screen, {
+        inputTarget: screen === "input" ? current.inputTarget || "wavelength" : undefined,
+        inputBuffer: screen === "input" ? current.inputBuffer || String(current.wavelength) : undefined,
+        dialogTitle: screen === "input" ? current.dialogTitle || "ВВОД ДАННЫХ" : undefined,
+        returnScreen: screen === "input" || screen === "saveDialog" ? current.screen : undefined,
+      });
     });
 
     flashStatus(`Переход: ${screen}`);
@@ -403,7 +434,7 @@ function AppContent() {
             device={device}
             enabled={lcdEditorEnabled}
             rows={lcdEditorRows}
-            previewRows={lcdEditorRows}
+            previewRows={previewRows}
             editorMode={lcdEditorMode}
             onEditorModeChange={setLcdEditorMode}
             sourceLabel={lcdEditorSource}
@@ -509,6 +540,7 @@ function AppContent() {
     loadDisplayPreset,
     mode,
     navigateToScreen,
+    panelElementLayout,
     panelLayout,
     performDarkCurrent,
     performPhotometryMeasure,
@@ -561,9 +593,7 @@ function AppContent() {
 
 export function Ecros5400UvSimulator() {
   const initialPrefs = loadWorkspacePrefs();
-  const initialDeviceState = initialPrefs?.currentScreen
-    ? { screen: initialPrefs.currentScreen, previousScreen: initialPrefs.currentScreen }
-    : null;
+  const initialDeviceState = restorePersistedDeviceState(initialPrefs?.deviceState, initialPrefs?.currentScreen);
 
   return (
     <DeviceProvider initialDeviceState={initialDeviceState}>

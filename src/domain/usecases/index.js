@@ -1,5 +1,65 @@
-import { DARK_VALUES, FILE_EXTENSIONS, VALID_FILE_RE, WL_MAX, WL_MIN, WARMUP_DURATION_SEC } from "../constants/index.js";
+import {
+  DARK_VALUES,
+  FILE_EXTENSIONS,
+  MULTI_WAVE_MAX_COUNT,
+  MULTI_WAVE_MIN_COUNT,
+  VALID_FILE_RE,
+  WL_MAX,
+  WL_MIN,
+  WARMUP_DURATION_SEC,
+} from "../constants/index.js";
 import { clamp, formatMmSs } from "./utils.js";
+
+const LOG_LIMIT = 180;
+const MULTI_WAVE_DEFAULTS = [452, 540, 620, 700, 820];
+const SIGNAL_LABELS = ["A", "%T", "ENERGY"];
+
+function average(values) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function createLogId() {
+  return `log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createLogLine(text, id = null) {
+  return {
+    id: id ?? createLogId(),
+    text: String(text ?? ""),
+  };
+}
+
+export function normalizeLogLine(line) {
+  if (line && typeof line === "object" && "text" in line) {
+    return {
+      id: line.id ?? createLogId(),
+      text: String(line.text ?? ""),
+    };
+  }
+  return createLogLine(line);
+}
+
+export function appendLogLine(lines, line, limit = LOG_LIMIT) {
+  const normalized = normalizeLogLine(line);
+  const current = Array.isArray(lines) ? lines.map(normalizeLogLine) : [];
+  return [...current.slice(-(limit - 1)), normalized];
+}
+
+export function createMultiWaveWavelengths(count = MULTI_WAVE_MAX_COUNT) {
+  const nextCount = clamp(Math.round(count), MULTI_WAVE_MIN_COUNT, MULTI_WAVE_MAX_COUNT);
+  return MULTI_WAVE_DEFAULTS.slice(0, nextCount).map((value) => Number(value.toFixed(1)));
+}
+
+export function normalizeMultiWaveWavelengths(wavelengths, count = MULTI_WAVE_MAX_COUNT) {
+  const nextCount = clamp(Math.round(count), MULTI_WAVE_MIN_COUNT, MULTI_WAVE_MAX_COUNT);
+  const fallback = createMultiWaveWavelengths(nextCount);
+  const source = Array.isArray(wavelengths) ? wavelengths : [];
+  return Array.from({ length: nextCount }, (_, index) => {
+    const value = typeof source[index] === "number" ? source[index] : fallback[index];
+    return clamp(Number(value.toFixed?.(1) ?? value), WL_MIN, WL_MAX);
+  });
+}
 
 export function referenceEnergyAt(wl) {
   const trend = 33880 - Math.abs(wl - 540) * 4.2;
@@ -48,13 +108,60 @@ export function measureSample({ sample, wavelength, gain, e100, darkValues, time
   const rawEnergy = clamp(ref * Math.pow(10, -absorbance), dark + 1, 65000);
   const noisy = clamp(addNoise(rawEnergy, 18), dark + 1, 65000);
   const correctedT = clamp((noisy - dark) / Math.max(1, e100 - dark), 0.0001, 2);
-  const A = -Math.log10(correctedT);
+  const computedA = -Math.log10(correctedT);
 
   return {
     dark,
     energy: noisy,
     t: clamp(correctedT * 100, 0, 200),
-    a: clamp(A, -0.3, 3.999),
+    a: clamp(computedA, -0.3, 3.999),
+  };
+}
+
+export function buildMultiWaveMeasurement(state) {
+  const signalIndex = clamp(state.photometryValueIndex ?? 0, 0, SIGNAL_LABELS.length - 1);
+  const wavelengths = normalizeMultiWaveWavelengths(state.multiWaveWavelengths, state.multiWaveCount).slice(
+    0,
+    clamp(state.multiWaveCount, MULTI_WAVE_MIN_COUNT, MULTI_WAVE_MAX_COUNT),
+  );
+  const parallels = clamp(
+    Math.round(state.multiWaveParallelCount ?? 1),
+    MULTI_WAVE_MIN_COUNT,
+    MULTI_WAVE_MAX_COUNT,
+  );
+
+  const points = wavelengths.map((wavelength) => {
+    const samples = Array.from({ length: parallels }, (_, parallelIndex) => measureSample({
+      sample: state.currentSample,
+      wavelength,
+      gain: state.gain,
+      e100: state.e100,
+      darkValues: state.darkValues,
+      timeSec: parallelIndex,
+    }));
+
+    const a = average(samples.map((sample) => sample.a));
+    const t = average(samples.map((sample) => sample.t));
+    const energy = Math.round(average(samples.map((sample) => sample.energy)));
+    const value = signalIndex === 1 ? t : signalIndex === 2 ? energy : a;
+
+    return {
+      wavelength,
+      a,
+      t,
+      energy,
+      value,
+    };
+  });
+
+  return {
+    id: `mw-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    index: (state.multiWaveMeasurements?.length ?? 0) + 1,
+    parallels,
+    signalIndex,
+    signalLabel: SIGNAL_LABELS[signalIndex],
+    points,
+    createdAt: new Date().toISOString(),
   };
 }
 
@@ -71,6 +178,7 @@ export function seedFiles() {
     ГРАДУИРОВКА: [{ name: "FE_SERIES_V1", ext: ".std", exported: false }],
     КОЭФФИЦИЕНТ: [{ name: "PROTEIN_KB", ext: ".cof", exported: false }],
     КИНЕТИКА: [{ name: "REACTION_A", ext: ".kin", exported: false }],
+    "МНОГОВОЛН.": [{ name: "MW_SCAN_01", ext: ".mwv", exported: false }],
   };
 }
 
@@ -97,9 +205,9 @@ export function getCalibrationDoneCount(plan) {
 
 export function getCalibrationResultIndexes(plan) {
   return plan
-    .map((step, idx) => ({ step, idx }))
+    .map((step, index) => ({ step, index }))
     .filter(({ step }) => Boolean(step.result))
-    .map(({ idx }) => idx);
+    .map(({ index }) => index);
 }
 
 export function findNextPendingStep(plan, fromIndex = -1) {
@@ -130,6 +238,7 @@ export function buildUsbExportPreview({
   measurements,
   calibrationPlan,
   kineticPoints,
+  multiWaveMeasurements,
   wavelength,
   quantK,
   quantB,
@@ -174,6 +283,23 @@ export function buildUsbExportPreview({
     return lines.join("\n");
   }
 
+  if (group === "МНОГОВОЛН.") {
+    lines.push("run,wavelength_nm,signal,value,A,T_percent,energy,parallels");
+    const rows = multiWaveMeasurements.slice(-10);
+    if (!rows.length) {
+      lines.push("1,,,0,,,0,1");
+    } else {
+      rows.forEach((measurement) => {
+        measurement.points.forEach((point) => {
+          lines.push(
+            `${measurement.index},${point.wavelength.toFixed(1)},${measurement.signalLabel},${Number(point.value).toFixed(4)},${point.a.toFixed(4)},${point.t.toFixed(2)},${point.energy},${measurement.parallels}`,
+          );
+        });
+      });
+    }
+    return lines.join("\n");
+  }
+
   lines.push("time_s,A");
   if (!kineticPoints.length) {
     lines.push("0,");
@@ -191,6 +317,8 @@ export function initialDevice() {
     photometryValueIndex: 0,
     quantIndex: 1,
     kineticsIndex: 0,
+    multiWaveIndex: 0,
+    multiWaveSetupIndex: 0,
     settingsIndex: 0,
     unitsIndex: 4,
     wavelength: 546.2,
@@ -224,7 +352,10 @@ export function initialDevice() {
     diagIndex: 0,
     warmupRemaining: WARMUP_DURATION_SEC,
     currentSample: "reference",
-    logLines: ["2026-03-24T16:20:17.662 - connect", "2026-03-24T16:20:26.365 - ok."],
+    logLines: [
+      createLogLine("2026-03-24T16:20:17.662 - connect", "seed-connect"),
+      createLogLine("2026-03-24T16:20:26.365 - ok.", "seed-ok"),
+    ],
     fileRootIndex: 0,
     fileListIndex: 0,
     fileActionIndex: 0,
@@ -236,6 +367,12 @@ export function initialDevice() {
     warning: null,
     warningReturn: "main",
     dialogTitle: "",
+    multiWaveCount: 3,
+    multiWaveParallelCount: 1,
+    multiWaveWavelengths: createMultiWaveWavelengths(),
+    multiWaveMeasurements: [],
+    multiWaveMeasurementCursor: 0,
+    multiWaveGraphData: [],
     calibration: {
       standards: 3,
       parallels: 3,
@@ -254,8 +391,8 @@ export function validateFileName(name) {
   return { valid: true, value: trimmed };
 }
 
-export function validateWavelength(wl) {
-  const parsed = typeof wl === "string" ? parseFloat(wl) : wl;
+export function validateWavelength(wavelength) {
+  const parsed = typeof wavelength === "string" ? parseFloat(wavelength) : wavelength;
   if (Number.isNaN(parsed)) {
     return { valid: false, error: "НЕВЕРНАЯ ДЛИНА ВОЛНЫ" };
   }
@@ -284,6 +421,7 @@ export function runSelfTests() {
   assertDev(plan[5].code === "С-3-2", "last plan code should be С-3-2");
   assertDev(fileExtByGroup("ФОТОМЕТРИЯ") === ".qua", "photometry extension mismatch");
   assertDev(fileExtByGroup("ГРАДУИРОВКА") === ".std", "calibration extension mismatch");
+  assertDev(fileExtByGroup("МНОГОВОЛН.") === ".mwv", "multiwave extension mismatch");
   assertDev(clamp(15, 1, 9) === 9, "clamp upper bound mismatch");
   assertDev(clamp(-1, 1, 9) === 1, "clamp lower bound mismatch");
 }

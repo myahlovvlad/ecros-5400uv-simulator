@@ -4,6 +4,11 @@ const QUICK_COMMANDS = ["help", "rezero", "getdark", "resetdark", "ge 2", "swl 3
 
 export function CliEmulator({ logLines, onExecute }) {
   const [cliValue, setCliValue] = useState("help");
+  const normalizedLines = Array.isArray(logLines)
+    ? logLines.map((line, index) => (typeof line === "object" && line !== null
+      ? { id: line.id ?? `legacy-${index}`, text: line.text ?? "" }
+      : { id: `legacy-${index}`, text: String(line ?? "") }))
+    : [];
 
   const execute = () => onExecute(cliValue);
 
@@ -12,13 +17,13 @@ export function CliEmulator({ logLines, onExecute }) {
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">CLI-эмулятор</h2>
-          <p className="text-sm text-zinc-500">Команды отображаются в журнале с префиксом <code>&gt;</code>, ответы приходят ниже.</p>
+          <p className="text-sm text-zinc-500">Команды отображаются в журнале с префиксом <code>&gt;</code>, ответы приходят ниже. Ошибки показываются как <code>error: ...</code>.</p>
         </div>
       </div>
 
       <div className="mb-3 rounded-2xl bg-zinc-950 p-3 font-mono text-xs text-emerald-300">
         <div className="mb-2 h-[340px] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-zinc-800 bg-black/20 p-3">
-          {logLines.map((line, index) => <div key={`${line}-${index}`}>{line || " "}</div>)}
+          {normalizedLines.map((line) => <div key={line.id}>{line.text || " "}</div>)}
         </div>
         <div className="flex gap-2">
           <input

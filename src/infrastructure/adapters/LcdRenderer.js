@@ -27,6 +27,20 @@ function getSampleLabel(device) {
   );
 }
 
+function pushMeasurementRows(rows, push, device) {
+  const currentRows = device.measurements.slice(-3);
+  currentRows.forEach((measurement, localIndex) => {
+    const globalIndex = Math.max(0, device.measurements.length - currentRows.length) + localIndex;
+    const line = device.photometryValueIndex === 0
+      ? `${measurement.index} ${measurement.wavelength.toFixed(1)} ${measurement.a.toFixed(3)}`
+      : device.photometryValueIndex === 1
+        ? `${measurement.index} ${measurement.wavelength.toFixed(1)} ${measurement.t.toFixed(1)}`
+        : `${measurement.index} ${measurement.wavelength.toFixed(1)} ${measurement.energy}`;
+    push(line, device.measurements.length > 0 && device.measurementCursor === globalIndex);
+  });
+  if (!device.measurements.length) push("НЕТ РЕЗУЛЬТАТОВ");
+}
+
 export function getLcdRows(device) {
   const rows = [];
   const push = (text, inverted = false) => rows.push({ text: pad(text), inverted });
@@ -86,11 +100,12 @@ export function getLcdRows(device) {
   }
 
   if (device.screen === "saveDialog") {
-    push("СОХРАНИТЬ ФАЙЛ", true);
+    const saveName = String(device.inputBuffer || "_").slice(0, 14);
+    push("СОХРАНИТЬ", true);
     push(`ТИП ${device.saveMeta.group}`);
-    push(`${device.inputBuffer || "_"}${device.saveMeta.suggestedExt}`);
-    push("ИМЯ ВРУЧНУЮ");
-    push("ВВОД - СОХРАНИТЬ");
+    push(`ИМЯ ${saveName}`);
+    push(`EXT ${device.saveMeta.suggestedExt}`);
+    push("ВВОД - СОХРАН.");
     push("ESC - ОТМЕНА");
     return rows;
   }
@@ -104,7 +119,7 @@ export function getLcdRows(device) {
   }
 
   if (device.screen === "fileRoot") {
-    push("ФАЙЛОВЫЙ МЕНЕДЖЕР", true);
+    push("ФАЙЛЫ", true);
     FILE_GROUPS.forEach((item, index) => push(item, device.fileRootIndex === index));
     push("ВВОД - ОТКРЫТЬ");
     push("ESC - НАЗАД");
@@ -144,6 +159,16 @@ export function getLcdRows(device) {
     MENU_PHOTOMETRY_VALUE.forEach((item, index) => push(item, device.photometryValueIndex === index));
     push("ВВОД - ВЫБРАТЬ");
     push("ESC - НАЗАД");
+    return rows;
+  }
+
+  if (device.screen === "photometryGraph") {
+    push("ФОТОМЕТРИЯ-ГРАФИК", true);
+    push(`ТОЧЕК ${device.measurements.length}`);
+    push(`ЛЯМ ${device.wavelength.toFixed(1)}`);
+    push(`A=${device.lastComputedA.toFixed(3)}`);
+    push("ФАЙЛ - СОХРАНИТЬ");
+    push("ESC - ЖУРНАЛ");
     return rows;
   }
 
@@ -276,6 +301,101 @@ export function getLcdRows(device) {
     return rows;
   }
 
+  if (device.screen === "kineticsGraph") {
+    push("КИНЕТИКА-ГРАФИК", true);
+    push(`ТОЧЕК ${device.kineticPoints.length}`);
+    push(`A=${device.lastComputedA.toFixed(3)}`);
+    push(`T=${device.lastComputedT.toFixed(1)}`);
+    push("ФАЙЛ - СОХРАНИТЬ");
+    push("ESC - ИЗМЕРЕНИЕ");
+    return rows;
+  }
+
+  if (device.screen === "multiWaveMenu") {
+    const signalShort = (
+      {
+        А: "A",
+        "%Т": "%T",
+        ЭНЕРГИЯ: "ENER.",
+      }[MENU_PHOTOMETRY_VALUE[device.photometryValueIndex]] ?? MENU_PHOTOMETRY_VALUE[device.photometryValueIndex]
+    );
+    push("МНОГОВОЛН.", true);
+    const labels = [
+      `ВОЛН [${device.multiWaveCount}]`,
+      `ПАРАЛ. [${device.multiWaveParallelCount}]`,
+      `СИГН [${signalShort}]`,
+      `ЕД [${UNITS[device.unitsIndex]}]`,
+      "ПУСК",
+    ];
+    labels.forEach((label, index) => push(label, device.multiWaveIndex === index));
+    push("ФАЙЛ / λ / ESC");
+    return rows;
+  }
+
+  if (device.screen === "multiWaveSetup") {
+    push("НАСТРОЙКА λ", true);
+    push(`ЧИСЛО ВОЛН ${device.multiWaveCount}`);
+    const start = Math.max(0, Math.min(device.multiWaveSetupIndex - 1, device.multiWaveCount - 3));
+    device.multiWaveWavelengths.slice(start, start + 3).forEach((wavelength, localIndex) => {
+      const index = start + localIndex;
+      if (index >= device.multiWaveCount) return;
+      push(`λ${index + 1} ${Number(wavelength).toFixed(1)} НМ`, index === device.multiWaveSetupIndex);
+    });
+    push("ВВОД - ИЗМЕНИТЬ");
+    push("ESC - МЕНЮ");
+    return rows;
+  }
+
+  if (device.screen === "multiWaveRun") {
+    push("МНОГОВОЛН. RUN", true);
+    const graphData = device.multiWaveGraphData?.length
+      ? device.multiWaveGraphData
+      : device.multiWaveWavelengths.slice(0, device.multiWaveCount).map((wavelength) => ({ wavelength, value: null }));
+    graphData.slice(0, 3).forEach((point, index) => {
+      push(`λ${index + 1}=${point.wavelength.toFixed(1)} ${point.value == null ? "--" : Number(point.value).toFixed(3)}`);
+    });
+    push(`SIG=${MENU_PHOTOMETRY_VALUE[device.photometryValueIndex]}`);
+    push("START - ИЗМЕРИТЬ");
+    push("ФАЙЛ / ESC");
+    return rows;
+  }
+
+  if (device.screen === "multiWaveJournal") {
+    const measurements = device.multiWaveMeasurements ?? [];
+    const cursor = Math.min(device.multiWaveMeasurementCursor ?? 0, Math.max(0, measurements.length - 1));
+    const start = Math.max(0, cursor - 1);
+    push(`ЖУРНАЛ MW ${measurements.length}`, true);
+    if (!measurements.length) {
+      push("НЕТ РЕЗУЛЬТАТОВ", true);
+    } else {
+      measurements.slice(start, start + 3).forEach((measurement, localIndex) => {
+        const index = start + localIndex;
+        const values = measurement.points.slice(0, 3).map((point) => Number(point.value).toFixed(2)).join(" ");
+        push(`${measurement.index}: ${values}`.slice(0, 20), index === cursor);
+      });
+    }
+    push("DOWN - ГРАФИК");
+    push("FILE - СОХРАНИТЬ");
+    push("ENTER/ESC - RUN");
+    return rows;
+  }
+
+  if (device.screen === "multiWaveGraph") {
+    push("СПЕКТР MW", true);
+    const points = (device.multiWaveGraphData ?? []).slice(0, 3);
+    if (!points.length) {
+      push("НЕТ СПЕКТРА", true);
+    } else {
+      points.forEach((point, index) => {
+        push(`λ${index + 1} ${point.wavelength.toFixed(1)} ${Number(point.value).toFixed(3)}`.slice(0, 20));
+      });
+    }
+    push(`SIG ${MENU_PHOTOMETRY_VALUE[device.photometryValueIndex]}`);
+    push("FILE - СОХРАНИТЬ");
+    push("ESC - ЖУРНАЛ");
+    return rows;
+  }
+
   if (device.screen === "settings") {
     push("НАСТРОЙКИ", true);
     MENU_SETTINGS.forEach((item, index) => {
@@ -300,7 +420,6 @@ export function getLcdRows(device) {
   }
 
   const valueLabel = MENU_PHOTOMETRY_VALUE[device.photometryValueIndex];
-  const currentRows = device.measurements.slice(-3);
   push(`ФОТОМЕТРИЯ ${valueLabel}`, true);
   push(center(`${device.wavelength.toFixed(1)} НМ`));
   push(center(
@@ -311,16 +430,7 @@ export function getLcdRows(device) {
         : `${device.lastEnergy}`,
   ));
   push("--------------------");
-  currentRows.forEach((measurement, localIndex) => {
-    const globalIndex = Math.max(0, device.measurements.length - currentRows.length) + localIndex;
-    const line = device.photometryValueIndex === 0
-      ? `${measurement.index} ${measurement.wavelength.toFixed(1)} ${measurement.a.toFixed(3)}`
-      : device.photometryValueIndex === 1
-        ? `${measurement.index} ${measurement.wavelength.toFixed(1)} ${measurement.t.toFixed(1)}`
-        : `${measurement.index} ${measurement.wavelength.toFixed(1)} ${measurement.energy}`;
-    push(line, device.measurements.length > 0 && device.measurementCursor === globalIndex);
-  });
-  if (!device.measurements.length) push("НЕТ РЕЗУЛЬТАТОВ");
+  pushMeasurementRows(rows, push, device);
   push(device.measurements.length ? "ВНИЗ ПОСЛЕ СПИСКА" : "START - ИЗМЕРИТЬ");
   return rows;
 }

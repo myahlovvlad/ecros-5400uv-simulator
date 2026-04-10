@@ -13,7 +13,7 @@ export class LoggerPort {
    * @param {string} message - Сообщение
    * @param {string} level - Уровень (info, warn, error)
    */
-  log(message, level = 'info') {
+  log(_message, _level = 'info') {
     throw new Error('Method not implemented');
   }
 
@@ -52,7 +52,7 @@ export class StoragePort {
    * @param {string} key - Ключ
    * @param {any} value - Значение
    */
-  save(key, value) {
+  save(_key, _value) {
     throw new Error('Method not implemented');
   }
 
@@ -61,7 +61,7 @@ export class StoragePort {
    * @param {string} key - Ключ
    * @returns {any} Значение
    */
-  load(key) {
+  load(_key) {
     throw new Error('Method not implemented');
   }
 
@@ -69,7 +69,7 @@ export class StoragePort {
    * Удаление данных
    * @param {string} key - Ключ
    */
-  delete(key) {
+  delete(_key) {
     throw new Error('Method not implemented');
   }
 
@@ -78,7 +78,7 @@ export class StoragePort {
    * @param {string} key - Ключ
    * @returns {boolean} Существует ли
    */
-  has(key) {
+  has(_key) {
     throw new Error('Method not implemented');
   }
 }
@@ -94,7 +94,7 @@ export class TimerPort {
    * @param {number} ms - Интервал в мс
    * @returns {number} ID интервала
    */
-  setInterval(callback, ms) {
+  setInterval(_callback, _ms) {
     throw new Error('Method not implemented');
   }
 
@@ -102,7 +102,7 @@ export class TimerPort {
    * Очистка интервала
    * @param {number} id - ID интервала
    */
-  clearInterval(id) {
+  clearInterval(_id) {
     throw new Error('Method not implemented');
   }
 
@@ -112,7 +112,7 @@ export class TimerPort {
    * @param {number} ms - Таймаут в мс
    * @returns {number} ID таймаута
    */
-  setTimeout(callback, ms) {
+  setTimeout(_callback, _ms) {
     throw new Error('Method not implemented');
   }
 
@@ -120,7 +120,7 @@ export class TimerPort {
    * Очистка таймаута
    * @param {number} id - ID таймаута
    */
-  clearTimeout(id) {
+  clearTimeout(_id) {
     throw new Error('Method not implemented');
   }
 
@@ -129,7 +129,7 @@ export class TimerPort {
    * @param {number} ms - Миллисекунды
    * @returns {Promise<void>}
    */
-  sleep(ms) {
+  sleep(_ms) {
     throw new Error('Method not implemented');
   }
 }
@@ -144,7 +144,7 @@ export class DeviceHardwarePort {
    * @param {Object} params - Параметры
    * @returns {Promise<number>} Энергия
    */
-  async measureEnergy(params) {
+  async measureEnergy(_params) {
     throw new Error('Method not implemented');
   }
 
@@ -153,7 +153,7 @@ export class DeviceHardwarePort {
    * @param {number} wavelength - Длина волны
    * @returns {Promise<void>}
    */
-  async setWavelength(wavelength) {
+  async setWavelength(_wavelength) {
     throw new Error('Method not implemented');
   }
 
@@ -186,7 +186,7 @@ export class DeviceHardwarePort {
    * @param {'D2'|'W'} type - Тип лампы
    * @returns {Promise<boolean>} Статус
    */
-  async getLampStatus(type) {
+  async getLampStatus(_type) {
     throw new Error('Method not implemented');
   }
 
@@ -196,7 +196,7 @@ export class DeviceHardwarePort {
    * @param {boolean} enabled - Включить
    * @returns {Promise<void>}
    */
-  async setLamp(type, enabled) {
+  async setLamp(_type, _enabled) {
     throw new Error('Method not implemented');
   }
 }
