@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LCD 128×64 Glyph Simulator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-title">
+      <h1>LCD 128×64 — симулятор рендера глифов</h1>
+      <p>Пиксельный рендер по загруженной глифовой спецификации v2.2. Поддерживаются варианты 5 px, 6 px и 8 px, браузер глифов и экспорт текущего framebuffer в C‑массив.</p>
+    </div>
+    <div class="header-stats">
+      <div class="pill">Глифов: <strong id="statsGlyphs">0</strong></div>
+      <div class="pill">Предупреждений: <strong id="statsWarnings">0</strong></div>
+      <div class="pill">Вариант: <strong id="statsVariant">—</strong></div>
+    </div>
+  </header>
+
+  <main class="app-grid">
+    <section class="panel">
+      <div class="panel-body">
+        <h2>Параметры рендера</h2>
+
+        <div class="control-grid">
+          <div class="field">
+            <label for="variant">Вариант шрифта</label>
+            <select id="variant"></select>
+          </div>
+          <div class="field">
+            <label for="scale">Масштаб пикселя</label>
+            <input id="scale" type="number" min="2" max="16" step="1" value="6">
+          </div>
+
+          <div class="field full">
+            <label for="textInput">Текст</label>
+            <textarea id="textInput">ЭКРОС-5400УФ
+λ = 280
+A = 1.234</textarea>
+          </div>
+
+          <div class="field">
+            <label for="startX">Start X</label>
+            <input id="startX" type="number" min="0" max="127" step="1" value="0">
+          </div>
+          <div class="field">
+            <label for="startY">Start Y</label>
+            <input id="startY" type="number" min="0" max="63" step="1" value="0">
+          </div>
+
+          <div class="field">
+            <label for="charSpacing">Межсимвольный интервал</label>
+            <input id="charSpacing" type="number" min="0" max="20" step="1" value="1">
+          </div>
+          <div class="field">
+            <label for="lineSpacing">Межстрочный интервал</label>
+            <input id="lineSpacing" type="number" min="0" max="20" step="1" value="1">
+          </div>
+
+          <div class="field">
+            <label for="pixelGap">Зазор между пикселями</label>
+            <input id="pixelGap" type="number" min="0" max="4" step="1" value="1">
+          </div>
+
+          <div class="field full">
+            <label>Параметры вывода</label>
+            <div class="checkbox-row">
+              <label><input id="wrap" type="checkbox" checked> Переносить по ширине LCD</label>
+              <label><input id="showGrid" type="checkbox"> Показать сетку</label>
+              <label><input id="invert" type="checkbox"> Инверсия экрана</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button id="fillDemoBtn" class="primary">Подставить демо</button>
+          <button id="clearBtn" class="secondary">Очистить</button>
+        </div>
+
+        <div style="margin-top:14px;">
+          <label>Быстрые примеры</label>
+          <div class="examples">
+            <button type="button" data-example="scan λ=280
+A=0.456">scan λ=280</button>
+            <button type="button" data-example="ЭКРОС
+СТАРТ
+БЛАНК">ЭКРОС / СТАРТ / БЛАНК</button>
+            <button type="button" data-example="A = 1.234
+T = 98.7%">A / T</button>
+            <button type="button" data-example="ПЭ-5400УФ
+λ=546.1">ПЭ-5400УФ</button>
+          </div>
+        </div>
+
+        <div class="footer-note">
+          Источник данных для набора глифов — компиляция из markdown‑спецификации. В приложении отдельно показаны диагностические несоответствия между заявленными размерами и фактическими матрицами.
+        </div>
+      </div>
+    </section>
+
+    <section class="panel screen-panel">
+      <div class="panel-body">
+        <div class="screen-toolbar">
+          <div>
+            <h2 style="margin-bottom:6px;">Симулятор экрана 128×64</h2>
+            <div class="meta">
+              <div class="pill">LCD: <strong id="metaDimensions">128×64</strong></div>
+              <div class="pill">Курсор: <strong id="metaCursor">0, 0</strong></div>
+              <div class="pill">Включённых пикселей: <strong id="metaPixels">0</strong></div>
+            </div>
+          </div>
+          <div class="button-row" style="margin-top:0;">
+            <button id="downloadPngBtn" class="secondary">Сохранить PNG</button>
+          </div>
+        </div>
+
+        <div class="canvas-wrap">
+          <canvas id="lcdCanvas" width="768" height="384"></canvas>
+        </div>
+
+        <div id="renderReport" class="render-report"></div>
+
+        <div class="export-box">
+          <div class="screen-toolbar" style="margin-bottom:10px;">
+            <h2 style="margin:0;">Экспорт framebuffer</h2>
+            <button id="copyCBtn" class="secondary">Скопировать C-массив</button>
+          </div>
+          <textarea id="frameBufferExport" spellcheck="false"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel browser-panel">
+      <div class="panel-body">
+        <h2>Браузер глифов</h2>
+
+        <div class="browser-toolbar">
+          <input id="glyphSearch" type="text" placeholder="Поиск по символу, названию или секции">
+          <select id="glyphVariant"></select>
+        </div>
+
+        <div class="glyph-preview">
+          <h3 id="selectedGlyphTitle">Глиф не выбран</h3>
+          <div class="preview-canvas-wrap">
+            <canvas id="glyphPreviewCanvas" width="120" height="120"></canvas>
+          </div>
+          <div class="preview-meta" id="selectedGlyphMeta"></div>
+        </div>
+
+        <div id="glyphList" class="glyph-list"></div>
+
+        <div class="diag-wrap">
+          <h2 style="margin-bottom:10px;">Диагностика спецификации</h2>
+          <div id="diagnosticsList" class="diag-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="glyphs-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
