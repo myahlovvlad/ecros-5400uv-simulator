@@ -1,0 +1,1418 @@
+[
+  {
+    "screen": "boot",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "",
+        "width": 0,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "    ЭКРОС-5400УФ",
+        "width": 93,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "",
+        "width": 0,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "  ДОБРО ПОЖАЛОВАТЬ",
+        "width": 108,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "diagnostic",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ДИАГНОСТИКА",
+        "width": 67,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ФИЛЬТРЫ ОК",
+        "width": 62,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "ЛАМПЫ ОК",
+        "width": 50,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "ДЕТЕКТОР ОК",
+        "width": 66,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "Д2-ЛАМПА ...",
+        "width": 62,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "В-ЛАМПА --",
+        "width": 60,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "КАЛИБР. ЛЯМ --",
+        "width": 79,
+        "overflow": false
+      },
+      {
+        "row": 8,
+        "text": "ТЕМН. ТОК --",
+        "width": 67,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "warmup",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ПРОГРЕВ",
+        "width": 41,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ESC - ПРОПУСК",
+        "width": 75,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "",
+        "width": 0,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "       12:25",
+        "width": 59,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "main",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ГЛАВНОЕ МЕНЮ",
+        "width": 74,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ФОТОМЕТРИЯ",
+        "width": 63,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "КОЛИЧ. АНАЛИЗ",
+        "width": 72,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "КИНЕТИКА",
+        "width": 47,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "МНОГОВОЛН.",
+        "width": 57,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "НАСТРОЙКИ",
+        "width": 53,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "546.2 НМ",
+        "width": 44,
+        "overflow": false
+      },
+      {
+        "row": 8,
+        "text": "ЭТАЛОН",
+        "width": 35,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "photometry",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ФОТОМЕТРИЯ А",
+        "width": 74,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "      546.2 НМ",
+        "width": 74,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "      0.184 А",
+        "width": 65,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "--------------------",
+        "width": 119,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "1 546.2 0.184",
+        "width": 65,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ВНИЗ ПОСЛЕ СПИСКА",
+        "width": 99,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "photometryValue",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ФОТОМЕТРИЯ",
+        "width": 63,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "А",
+        "width": 5,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "%Т",
+        "width": 11,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "ЭНЕРГИЯ",
+        "width": 41,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ВВОД - ВЫБРАТЬ",
+        "width": 85,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ESC - НАЗАД",
+        "width": 65,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "photometryGraph",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ФОТОМЕТРИЯ-ГРАФИК",
+        "width": 107,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ТОЧЕК 3",
+        "width": 40,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "ЛЯМ 546.2",
+        "width": 50,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "A=0.280",
+        "width": 37,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ФАЙЛ - СОХРАНИТЬ",
+        "width": 95,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ESC - ЖУРНАЛ",
+        "width": 71,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "fileRoot",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ФАЙЛЫ",
+        "width": 33,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ФОТОМЕТРИЯ",
+        "width": 63,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "ГРАДУИРОВКА",
+        "width": 67,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "КОЭФФИЦИЕНТ",
+        "width": 70,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "КИНЕТИКА",
+        "width": 47,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "МНОГОВОЛН.",
+        "width": 57,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ВВОД - ОТКРЫТЬ",
+        "width": 85,
+        "overflow": false
+      },
+      {
+        "row": 8,
+        "text": "ESC - НАЗАД",
+        "width": 65,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "fileList",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ФАЙЛЫ МНОГОВОЛН.",
+        "width": 96,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "MW_SCAN_01.mwv",
+        "width": 82,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "ВВОД - ДЕЙСТВИЯ",
+        "width": 91,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "ESC - НАЗАД",
+        "width": 65,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "fileActionMenu",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "  HOLMIUM_TEST.qua",
+        "width": 103,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ОТКРЫТЬ",
+        "width": 43,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "ПЕРЕИМЕНОВАТЬ",
+        "width": 79,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "УДАЛИТЬ",
+        "width": 43,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ЭКСПОРТ",
+        "width": 41,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ВВОД - ВЫБРАТЬ",
+        "width": 85,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ESC - ОТМЕНА",
+        "width": 71,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "saveDialog",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "СОХРАНИТЬ",
+        "width": 53,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ТИП МНОГОВОЛН.",
+        "width": 80,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "ИМЯ MW_SCAN_02",
+        "width": 88,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "EXT .mwv",
+        "width": 42,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ВВОД - СОХРАН.",
+        "width": 79,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ESC - ОТМЕНА",
+        "width": 71,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "input",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ВВЕДИТЕ ДЛИНУ ВОЛНЫ",
+        "width": 117,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "",
+        "width": 0,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "       546.2",
+        "width": 60,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "0-9 . - УДАЛИТЬ",
+        "width": 84,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ВВОД - ПРИНЯТЬ",
+        "width": 83,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ESC - ОТМЕНА",
+        "width": 71,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "quantMain",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "КОЛИЧ. АНАЛИЗ",
+        "width": 72,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "НОВАЯ ГРАДУИР.",
+        "width": 80,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "КОЭФФИЦИЕНТ",
+        "width": 70,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "ЕДИНИЦЫ",
+        "width": 46,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "К=1.234",
+        "width": 36,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "Б=0.056 МОЛЬ/Л",
+        "width": 79,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ВВОД - ОТКРЫТЬ",
+        "width": 85,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "quantUnits",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ЕДИНИЦЫ",
+        "width": 46,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "МОЛЬ/Л",
+        "width": 36,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "МГ/КГ",
+        "width": 30,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "%",
+        "width": 5,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ТСУ",
+        "width": 17,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ВВОД - ВЫБРАТЬ",
+        "width": 85,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ESC - НАЗАД",
+        "width": 65,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "quantCoef",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "КОЭФФИЦИЕНТ",
+        "width": 70,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "540.0 НМ",
+        "width": 44,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "0.412 А",
+        "width": 35,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "0.929 МОЛЬ/Л",
+        "width": 67,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "К=2.154",
+        "width": 36,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "Б=0.042",
+        "width": 37,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "START/ФАЙЛ/ESC",
+        "width": 83,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "calibrationSetupStandards",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "НОВАЯ ГРАДУИР.",
+        "width": 80,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ЧИСЛО СТАНДАРТОВ",
+        "width": 96,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "         5",
+        "width": 50,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "СТРЕЛКИ 1..9",
+        "width": 61,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ВВОД - ДАЛЕЕ",
+        "width": 73,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ESC - НАЗАД",
+        "width": 65,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "calibrationSetupParallels",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "НОВАЯ ГРАДУИР.",
+        "width": 80,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ЧИСЛО ПАРАЛЛЕЛЕЙ",
+        "width": 94,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "         4",
+        "width": 50,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "СТРЕЛКИ 1..9",
+        "width": 61,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ВВОД - ПЛАН",
+        "width": 65,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ESC - НАЗАД",
+        "width": 65,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "calibrationPlan",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ПЛАН ИЗМЕРЕНИЙ",
+        "width": 84,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "СТАНД. 3",
+        "width": 44,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "ПАРАЛЛ. 2",
+        "width": 48,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "СЛЕД. С-2-2",
+        "width": 62,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ГОТОВО 4/6",
+        "width": 57,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ВВОД - НАЧАТЬ",
+        "width": 77,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "НОЛЬ - ОБНУЛИТЬ",
+        "width": 87,
+        "overflow": false
+      },
+      {
+        "row": 8,
+        "text": "ВНИЗ - ЖУРНАЛ",
+        "width": 77,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "calibrationStep",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "НОВАЯ ГРАДУИР.",
+        "width": 80,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ВСТАВЬТЕ С-3-1",
+        "width": 81,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "СЕРИЯ 1",
+        "width": 39,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "СТАНДАРТ 3",
+        "width": 60,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "НОЛЬ - ОБНУЛИТЬ",
+        "width": 87,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "START - ИЗМЕРИТЬ",
+        "width": 95,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ESC - ПЛАН",
+        "width": 57,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "calibrationJournal",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ЖУРНАЛ 4/6",
+        "width": 59,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "С-1-1 А=0.123",
+        "width": 69,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "С-2-1 А=0.234",
+        "width": 71,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "С-3-1 А=0.345",
+        "width": 71,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ВВОД - ДАЛЕЕ",
+        "width": 73,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "START - ПЕРЕМЕРИТЬ",
+        "width": 107,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ОЧИСТИТЬ - УДАЛИТЬ",
+        "width": 107,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "calibrationGraph",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ГРАФИК ГРАДУИР.",
+        "width": 88,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ГОТОВО 4/6",
+        "width": 57,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "ESC - ЖУРНАЛ",
+        "width": 71,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "ФАЙЛ - СОХРАНИТЬ",
+        "width": 95,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "kineticsMenu",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "КИНЕТИКА",
+        "width": 47,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ВЕЛИЧИНА",
+        "width": 47,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "ВЕРХ. ГРАНИЦА",
+        "width": 73,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "НИЖ. ГРАНИЦА",
+        "width": 69,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ОБЩЕЕ ВРЕМЯ",
+        "width": 68,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ПУСК",
+        "width": 23,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ВРЕМЯ=120С",
+        "width": 60,
+        "overflow": false
+      },
+      {
+        "row": 8,
+        "text": "А 0.05..1.80",
+        "width": 53,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "kineticsRun",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "КИНЕТИКА",
+        "width": 47,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ВРЕМЯ=10С",
+        "width": 54,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "А=0.410",
+        "width": 36,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "%Т=38.8",
+        "width": 37,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ВНИЗ - ГРАФИК",
+        "width": 77,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "START - СТОП",
+        "width": 69,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ESC - МЕНЮ",
+        "width": 61,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "kineticsGraph",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "КИНЕТИКА-ГРАФИК",
+        "width": 91,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ТОЧЕК 4",
+        "width": 40,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "A=0.670",
+        "width": 37,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "T=21.4",
+        "width": 30,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ФАЙЛ - СОХРАНИТЬ",
+        "width": 95,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ESC - ИЗМЕРЕНИЕ",
+        "width": 89,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "multiWaveMenu",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "МНОГОВОЛН.",
+        "width": 57,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ВОЛН [3]",
+        "width": 42,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "ПАРАЛ. [2]",
+        "width": 50,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "СИГН [ENER.]",
+        "width": 62,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ЕД [%]",
+        "width": 32,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ПУСК",
+        "width": 23,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ФАЙЛ / λ / ESC",
+        "width": 79,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "multiWaveSetup",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "НАСТРОЙКА λ",
+        "width": 64,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ЧИСЛО ВОЛН 3",
+        "width": 69,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "λ1 412.5 НМ",
+        "width": 59,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "λ2 540.0 НМ",
+        "width": 61,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "λ3 620.3 НМ",
+        "width": 61,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ВВОД - ИЗМЕНИТЬ",
+        "width": 91,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ESC - МЕНЮ",
+        "width": 61,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "multiWaveRun",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "МНОГОВОЛН. RUN",
+        "width": 80,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "λ1=412.5 0.185",
+        "width": 71,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "λ2=540.0 0.253",
+        "width": 74,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "λ3=620.3 0.292",
+        "width": 74,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "SIG=А",
+        "width": 27,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "START - ИЗМЕРИТЬ",
+        "width": 95,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ФАЙЛ / ESC",
+        "width": 58,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "multiWaveJournal",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "ЖУРНАЛ MW 1",
+        "width": 68,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "1: 0.18 0.25 0.29",
+        "width": 80,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "DOWN - ГРАФИК",
+        "width": 79,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "FILE - СОХРАНИТЬ",
+        "width": 91,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "ENTER/ESC - RUN",
+        "width": 86,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "multiWaveGraph",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "СПЕКТР MW",
+        "width": 56,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "λ1 412.5 0.185",
+        "width": 70,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "λ2 540.0 0.253",
+        "width": 73,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "λ3 620.3 0.292",
+        "width": 73,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "SIG %Т",
+        "width": 32,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "FILE - СОХРАНИТЬ",
+        "width": 91,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "ESC - ЖУРНАЛ",
+        "width": 71,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "settings",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "НАСТРОЙКИ",
+        "width": 53,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "Д2-ЛАМПА ВЫКЛ",
+        "width": 82,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "В-ЛАМПА ВКЛ",
+        "width": 66,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "ТЕМНОВОЙ ТОК",
+        "width": 72,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "КАЛИБР. ЛЯМ",
+        "width": 62,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ВЕРСИЯ",
+        "width": 35,
+        "overflow": false
+      },
+      {
+        "row": 7,
+        "text": "СБРОС",
+        "width": 29,
+        "overflow": false
+      },
+      {
+        "row": 8,
+        "text": "ЩЕЛЬ=2 САМПЛ=0",
+        "width": 86,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "version",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "О СИСТЕМЕ",
+        "width": 54,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "ЭКРОС-5400УФ",
+        "width": 73,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "ПО 2.8.46",
+        "width": 44,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "АП R0D",
+        "width": 34,
+        "overflow": false
+      },
+      {
+        "row": 5,
+        "text": "МЕТАШ",
+        "width": 33,
+        "overflow": false
+      },
+      {
+        "row": 6,
+        "text": "ВВОД/ESC - НАЗАД",
+        "width": 96,
+        "overflow": false
+      }
+    ]
+  },
+  {
+    "screen": "warning",
+    "issues": [],
+    "rows": [
+      {
+        "row": 1,
+        "text": "   ПРЕДУПРЕЖДЕНИЕ",
+        "width": 104,
+        "overflow": false
+      },
+      {
+        "row": 2,
+        "text": "     ОШИБКА USB",
+        "width": 85,
+        "overflow": false
+      },
+      {
+        "row": 3,
+        "text": "  ФАЙЛ НЕ СОХРАНЕН",
+        "width": 105,
+        "overflow": false
+      },
+      {
+        "row": 4,
+        "text": "     ВВОД / ESC",
+        "width": 83,
+        "overflow": false
+      }
+    ]
+  }
+]

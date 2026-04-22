@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { SCREEN_INDEX } from "../../application/services/screenFlow.js";
+import { SCREEN_INDEX } from "../../domain/constants/screens.js";
 import { debugError, debugLog } from "../utils/debug.js";
 import { LcdCanvas } from "./LcdCanvas.jsx";
 

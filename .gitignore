@@ -23,6 +23,7 @@ ECROS-5400UV cli log*.log
 Thumbs.db
 
 # IDE
+.claude/
 .vscode/
 .idea/
 *.swp

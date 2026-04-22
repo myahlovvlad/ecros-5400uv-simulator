@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { SCREEN_FLOW_EDGES, SCREEN_INDEX, transitionToScreen } from "../../src/application/services/screenFlow.js";
+import { transitionToScreen } from "../../src/application/services/screenFlow.js";
+import { SCREEN_FLOW_EDGES, SCREEN_INDEX, getScreenTransitions } from "../../src/domain/constants/screens.js";
 import { initialDevice } from "../../src/domain/usecases/index.js";
 
 describe("screenFlow", () => {
@@ -45,9 +46,16 @@ describe("screenFlow", () => {
   it("includes multiWave screens and graph file/save transitions", () => {
     expect(SCREEN_INDEX.multiWaveMenu).toBe("WND-25");
     expect(SCREEN_INDEX.multiWaveGraph).toBe("WND-29");
+    expect(getScreenTransitions("main")).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: "enter", target: "multiWaveMenu" }),
+    ]));
     expect(SCREEN_FLOW_EDGES).toContainEqual(["main", "multiWaveMenu", "enter"]);
     expect(SCREEN_FLOW_EDGES).toContainEqual(["photometryGraph", "saveDialog", "file"]);
     expect(SCREEN_FLOW_EDGES).toContainEqual(["kineticsGraph", "saveDialog", "file"]);
     expect(SCREEN_FLOW_EDGES).toContainEqual(["multiWaveGraph", "saveDialog", "file"]);
+  });
+
+  it("rejects unknown screen targets in test/dev mode", () => {
+    expect(() => transitionToScreen(initialDevice(), "missingScreen")).toThrow("Unknown screen target");
   });
 });

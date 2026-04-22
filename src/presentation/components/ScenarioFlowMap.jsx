@@ -3,7 +3,7 @@ import {
   SCREEN_FLOW_EDGES,
   SCREEN_FLOW_NODES,
   SCREEN_INDEX,
-} from "../../application/services/screenFlow.js";
+} from "../../domain/constants/screens.js";
 import { debugError } from "../utils/debug.js";
 
 const GRAPH_BASE_W = 1360;

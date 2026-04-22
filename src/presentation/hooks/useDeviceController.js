@@ -49,7 +49,7 @@ import {
 } from "../../domain/usecases/index.js";
 import { debugError, debugLog } from "../utils/debug.js";
 
-const SCREEN_HANDLER_REGISTRY = {
+export const SCREEN_HANDLER_REGISTRY = {
   warning: handleWarningScreen,
   warmup: handleWarmupScreen,
   input: handleInputScreen,

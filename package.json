@@ -12,6 +12,9 @@
     "test:coverage": "vitest --coverage",
     "lint": "eslint src/ --ext .js,.jsx",
     "lint:fix": "eslint src/ --ext .js,.jsx --fix",
+    "audit:glyphs": "node scripts/glyph-audit.mjs",
+    "docs:screens": "node scripts/generate-screen-docs.mjs",
+    "docs:screens:html": "node scripts/generate-screen-docs.mjs --html-only",
     "typecheck": "tsc --noEmit",
     "start": "node scripts/start.js"
   },

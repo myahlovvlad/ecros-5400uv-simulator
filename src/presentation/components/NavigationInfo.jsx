@@ -1,7 +1,7 @@
 import React from "react";
 import { FILE_GROUPS } from "../../domain/constants/index.js";
+import { SCREEN_FLOW_EDGES, SCREEN_INDEX } from "../../domain/constants/screens.js";
 import { getCalibrationDoneCount } from "../../domain/usecases/index.js";
-import { SCREEN_FLOW_EDGES, SCREEN_INDEX } from "../../application/services/screenFlow.js";
 import { LCD_TEXT_MAX_WIDTH } from "./LcdCanvas.jsx";
 
 export function NavigationInfo({ device, onCalibrationChange }) {

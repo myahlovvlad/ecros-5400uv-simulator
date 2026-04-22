@@ -1,0 +1,1610 @@
+[
+  {
+    "id": "boot",
+    "canonicalId": "SYS-BOOT",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "merged",
+    "legacyWnd": "WND-01",
+    "title": "Приветственное окно",
+    "mode": "system",
+    "kind": "system",
+    "label": "Boot",
+    "flowPosition": {
+      "x": 40,
+      "y": 36
+    },
+    "sourceScreenIds": [
+      "1-1"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Photometry_screen map ECROS-5400UV_RU.txt",
+        "scenario": "shared boot sequence",
+        "line": 4
+      },
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "shared boot sequence",
+        "line": 4
+      },
+      {
+        "file": "docs/screen-map/Kinetic_screen_map_ECROS-5400UV_RU.txt",
+        "scenario": "shared boot sequence",
+        "line": 6
+      },
+      {
+        "file": "docs/screen-map/Settings_ECROS-5400UV-Screen_map_RU.txt",
+        "scenario": "shared boot sequence",
+        "line": 4
+      }
+    ],
+    "fields": [
+      "logo",
+      "softwareVersion"
+    ],
+    "transitions": [
+      {
+        "action": "timer",
+        "target": "diagnostic",
+        "source": "runtime boot timer"
+      }
+    ]
+  },
+  {
+    "id": "diagnostic",
+    "canonicalId": "SYS-DIAGNOSTIC",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "merged",
+    "legacyWnd": "WND-02",
+    "title": "Диагностика",
+    "mode": "system",
+    "kind": "system",
+    "label": "Diagnostic",
+    "flowPosition": {
+      "x": 220,
+      "y": 36
+    },
+    "sourceScreenIds": [
+      "1-2"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Photometry_screen map ECROS-5400UV_RU.txt",
+        "scenario": "shared diagnostics",
+        "line": 13
+      },
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "shared diagnostics",
+        "line": 13
+      },
+      {
+        "file": "docs/screen-map/Kinetic_screen_map_ECROS-5400UV_RU.txt",
+        "scenario": "shared diagnostics",
+        "line": 15
+      },
+      {
+        "file": "docs/screen-map/Settings_ECROS-5400UV-Screen_map_RU.txt",
+        "scenario": "shared diagnostics",
+        "line": 13
+      }
+    ],
+    "fields": [
+      "filterStatus",
+      "lampStatus",
+      "detectorStatus",
+      "d2LampStatus",
+      "wLampStatus",
+      "wavelengthCalibrationStatus",
+      "darkCurrentStatus"
+    ],
+    "transitions": [
+      {
+        "action": "done",
+        "target": "warmup",
+        "source": "runtime diagnostic complete"
+      }
+    ]
+  },
+  {
+    "id": "warmup",
+    "canonicalId": "SYS-WARMUP",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "merged",
+    "legacyWnd": "WND-03",
+    "title": "Прогрев",
+    "mode": "system",
+    "kind": "system",
+    "label": "Warmup",
+    "flowPosition": {
+      "x": 400,
+      "y": 36
+    },
+    "sourceScreenIds": [
+      "1-3"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Photometry_screen map ECROS-5400UV_RU.txt",
+        "scenario": "shared warmup",
+        "line": 28
+      },
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "shared warmup",
+        "line": 28
+      },
+      {
+        "file": "docs/screen-map/Kinetic_screen_map_ECROS-5400UV_RU.txt",
+        "scenario": "shared warmup",
+        "line": 30
+      },
+      {
+        "file": "docs/screen-map/Settings_ECROS-5400UV-Screen_map_RU.txt",
+        "scenario": "shared warmup",
+        "line": 28
+      }
+    ],
+    "fields": [
+      "warmupRemaining",
+      "skipHint"
+    ],
+    "transitions": [
+      {
+        "action": "esc/timer",
+        "target": "main",
+        "source": "runtime warmup"
+      }
+    ]
+  },
+  {
+    "id": "main",
+    "canonicalId": "MAIN-MENU",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "merged",
+    "legacyWnd": "WND-04",
+    "title": "Главное меню",
+    "mode": "shared",
+    "kind": "menu",
+    "label": "Main Menu",
+    "flowPosition": {
+      "x": 600,
+      "y": 36
+    },
+    "sourceScreenIds": [
+      "1-4"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Photometry_screen map ECROS-5400UV_RU.txt",
+        "scenario": "select photometry",
+        "line": 38
+      },
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "select quantitative analysis",
+        "line": 38
+      },
+      {
+        "file": "docs/screen-map/Kinetic_screen_map_ECROS-5400UV_RU.txt",
+        "scenario": "select kinetics",
+        "line": 40
+      },
+      {
+        "file": "docs/screen-map/Settings_ECROS-5400UV-Screen_map_RU.txt",
+        "scenario": "select settings",
+        "line": 38
+      }
+    ],
+    "fields": [
+      "menuItems",
+      "mainIndex",
+      "wavelength",
+      "sampleLabel"
+    ],
+    "transitions": [
+      {
+        "action": "enter",
+        "target": "photometry",
+        "condition": "mainIndex == 0",
+        "source": "Screen 1-4 select Фотометрия"
+      },
+      {
+        "action": "enter",
+        "target": "quantMain",
+        "condition": "mainIndex == 1",
+        "source": "Screen 1-4 select Колич. анализ"
+      },
+      {
+        "action": "enter",
+        "target": "kineticsMenu",
+        "condition": "mainIndex == 2",
+        "source": "Screen 1-4 select Кинетика"
+      },
+      {
+        "action": "enter",
+        "target": "multiWaveMenu",
+        "condition": "mainIndex == 3",
+        "source": "runtime multiwave menu"
+      },
+      {
+        "action": "enter",
+        "target": "settings",
+        "condition": "mainIndex == 4",
+        "source": "Screen 1-4 select Настройки"
+      },
+      {
+        "action": "file",
+        "target": "fileRoot",
+        "source": "runtime file key"
+      }
+    ]
+  },
+  {
+    "id": "photometry",
+    "canonicalId": "PHOT-MAIN",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "merged",
+    "legacyWnd": "WND-05",
+    "title": "Фотометрия",
+    "mode": "photometry",
+    "kind": "measurement",
+    "label": "Photometry",
+    "flowPosition": {
+      "x": 40,
+      "y": 168
+    },
+    "sourceScreenIds": [
+      "1-5-1",
+      "1-5-2",
+      "1-5-3"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Photometry_screen map ECROS-5400UV_RU.txt",
+        "scenario": "wavelength and measurement flows",
+        "line": 52
+      },
+      {
+        "file": "docs/screen-map/Kinetic_screen_map_ECROS-5400UV_RU.txt",
+        "scenario": "shared wavelength input references",
+        "line": 495
+      }
+    ],
+    "fields": [
+      "wavelength",
+      "selectedSignal",
+      "lastComputedA",
+      "lastComputedT",
+      "lastEnergy",
+      "measurements"
+    ],
+    "transitions": [
+      {
+        "action": "set",
+        "target": "photometryValue",
+        "source": "value type selection"
+      },
+      {
+        "action": "down",
+        "target": "photometryGraph",
+        "condition": "measurementCursor at last row",
+        "source": "runtime graph shortcut"
+      },
+      {
+        "action": "goto λ",
+        "target": "input",
+        "source": "Screen 1-5-1 task установить λ"
+      },
+      {
+        "action": "file",
+        "target": "fileList",
+        "condition": "no measurements",
+        "source": "runtime browse files"
+      },
+      {
+        "action": "file",
+        "target": "saveDialog",
+        "condition": "measurements exist",
+        "source": "runtime save measurements"
+      },
+      {
+        "action": "esc",
+        "target": "main",
+        "source": "runtime escape"
+      }
+    ]
+  },
+  {
+    "id": "photometryValue",
+    "canonicalId": "PHOT-SIGNAL",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "merged",
+    "legacyWnd": "WND-06",
+    "title": "Выбор величины фотометрии",
+    "mode": "photometry",
+    "kind": "menu",
+    "label": "Value Mode",
+    "flowPosition": {
+      "x": 40,
+      "y": 292
+    },
+    "sourceScreenIds": [
+      "1-5-1-2",
+      "1-5-1-2-1",
+      "1-5-1-2-4"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Photometry_screen map ECROS-5400UV_RU.txt",
+        "scenario": "measurement value selection",
+        "line": 170
+      }
+    ],
+    "fields": [
+      "signalOptions",
+      "photometryValueIndex"
+    ],
+    "transitions": [
+      {
+        "action": "enter/esc",
+        "target": "photometry",
+        "condition": "returnScreen == photometry",
+        "source": "runtime return"
+      },
+      {
+        "action": "enter/esc",
+        "target": "multiWaveMenu",
+        "condition": "returnScreen == multiWaveMenu",
+        "source": "runtime return from multiwave"
+      }
+    ]
+  },
+  {
+    "id": "photometryGraph",
+    "canonicalId": "PHOT-GRAPH",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "reindexed",
+    "legacyWnd": "WND-07",
+    "title": "График фотометрии",
+    "mode": "photometry",
+    "kind": "graph",
+    "label": "Photo Graph",
+    "flowPosition": {
+      "x": 40,
+      "y": 416
+    },
+    "sourceScreenIds": [
+      "1-5-1-8",
+      "1-5-1-9"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Photometry_screen map ECROS-5400UV_RU.txt",
+        "scenario": "photometry graph and records",
+        "line": 514
+      }
+    ],
+    "fields": [
+      "measurementsGraph",
+      "wavelength",
+      "lastComputedA"
+    ],
+    "transitions": [
+      {
+        "action": "esc",
+        "target": "photometry",
+        "source": "runtime return to journal"
+      },
+      {
+        "action": "file",
+        "target": "saveDialog",
+        "source": "runtime save graph"
+      }
+    ]
+  },
+  {
+    "id": "fileRoot",
+    "canonicalId": "FILE-ROOT",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "runtime-only",
+    "legacyWnd": "WND-08",
+    "title": "Группы файлов",
+    "mode": "files",
+    "kind": "file",
+    "label": "File Root",
+    "flowPosition": {
+      "x": 1090,
+      "y": 292
+    },
+    "sourceScreenIds": [
+      "file-root"
+    ],
+    "sources": [
+      {
+        "file": "runtime",
+        "scenario": "file manager root",
+        "line": 0
+      }
+    ],
+    "fields": [
+      "fileGroups",
+      "fileRootIndex"
+    ],
+    "transitions": [
+      {
+        "action": "enter",
+        "target": "fileList",
+        "source": "runtime open group"
+      },
+      {
+        "action": "esc",
+        "target": "main",
+        "source": "runtime escape from root"
+      }
+    ]
+  },
+  {
+    "id": "fileList",
+    "canonicalId": "FILE-LIST",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "runtime-only",
+    "legacyWnd": "WND-09",
+    "title": "Список файлов",
+    "mode": "files",
+    "kind": "file",
+    "label": "File List",
+    "flowPosition": {
+      "x": 1090,
+      "y": 416
+    },
+    "sourceScreenIds": [
+      "file-list"
+    ],
+    "sources": [
+      {
+        "file": "runtime",
+        "scenario": "file list",
+        "line": 0
+      }
+    ],
+    "fields": [
+      "fileContext",
+      "files",
+      "fileListIndex"
+    ],
+    "transitions": [
+      {
+        "action": "enter",
+        "target": "fileActionMenu",
+        "condition": "files exist",
+        "source": "runtime file actions"
+      },
+      {
+        "action": "esc",
+        "target": "fileRoot",
+        "condition": "previousScreen == main",
+        "source": "runtime escape to root"
+      }
+    ]
+  },
+  {
+    "id": "fileActionMenu",
+    "canonicalId": "FILE-ACTION",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "runtime-only",
+    "legacyWnd": "WND-10",
+    "title": "Действия с файлом",
+    "mode": "files",
+    "kind": "file",
+    "label": "File Actions",
+    "flowPosition": {
+      "x": 1090,
+      "y": 540
+    },
+    "sourceScreenIds": [
+      "file-action"
+    ],
+    "sources": [
+      {
+        "file": "runtime",
+        "scenario": "file action menu",
+        "line": 0
+      }
+    ],
+    "fields": [
+      "selectedFile",
+      "fileActions",
+      "fileActionIndex"
+    ],
+    "transitions": [
+      {
+        "action": "rename",
+        "target": "input",
+        "source": "runtime rename dialog"
+      },
+      {
+        "action": "open/export",
+        "target": "warning",
+        "source": "runtime file warning"
+      },
+      {
+        "action": "esc",
+        "target": "fileList",
+        "source": "runtime return to file list"
+      }
+    ]
+  },
+  {
+    "id": "saveDialog",
+    "canonicalId": "FILE-SAVE",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "runtime-only",
+    "legacyWnd": "WND-11",
+    "title": "Сохранение файла",
+    "mode": "files",
+    "kind": "dialog",
+    "label": "Save Dialog",
+    "flowPosition": {
+      "x": 1270,
+      "y": 416
+    },
+    "sourceScreenIds": [
+      "save-dialog"
+    ],
+    "sources": [
+      {
+        "file": "runtime",
+        "scenario": "save file dialog",
+        "line": 0
+      }
+    ],
+    "fields": [
+      "saveMeta",
+      "inputBuffer"
+    ],
+    "transitions": [
+      {
+        "action": "esc/enter",
+        "target": "main",
+        "condition": "actual target is returnScreen/previousScreen",
+        "source": "runtime save result"
+      }
+    ]
+  },
+  {
+    "id": "input",
+    "canonicalId": "SHARED-INPUT",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "merged",
+    "legacyWnd": "WND-12",
+    "title": "Ввод данных",
+    "mode": "shared",
+    "kind": "input",
+    "label": "Input Dialog",
+    "flowPosition": {
+      "x": 1270,
+      "y": 540
+    },
+    "sourceScreenIds": [
+      "1-5-1-1-1",
+      "1-5-1-1-2",
+      "1-5-1-1-3"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Photometry_screen map ECROS-5400UV_RU.txt",
+        "scenario": "wavelength input",
+        "line": 63
+      },
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "coefficient and wavelength input",
+        "line": 84
+      },
+      {
+        "file": "docs/screen-map/Kinetic_screen_map_ECROS-5400UV_RU.txt",
+        "scenario": "kinetics parameter input",
+        "line": 458
+      }
+    ],
+    "fields": [
+      "dialogTitle",
+      "inputTarget",
+      "inputBuffer",
+      "returnScreen"
+    ],
+    "transitions": [
+      {
+        "action": "esc/enter",
+        "target": "main",
+        "condition": "actual target is returnScreen",
+        "source": "runtime input result"
+      }
+    ]
+  },
+  {
+    "id": "quantMain",
+    "canonicalId": "QUANT-MAIN",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "ambiguous",
+    "legacyWnd": "WND-13",
+    "title": "Количественный анализ",
+    "mode": "quantitative",
+    "kind": "menu",
+    "label": "Quant Main",
+    "flowPosition": {
+      "x": 250,
+      "y": 168
+    },
+    "sourceScreenIds": [
+      "1-6-1",
+      "1-6-2"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "quantitative main menu and repeated coefficient screens",
+        "line": 51
+      }
+    ],
+    "fields": [
+      "quantMenu",
+      "quantIndex",
+      "quantK",
+      "quantB",
+      "unitsIndex"
+    ],
+    "transitions": [
+      {
+        "action": "enter",
+        "target": "calibrationSetupStandards",
+        "condition": "quantIndex == 0",
+        "source": "new calibration"
+      },
+      {
+        "action": "enter",
+        "target": "quantCoef",
+        "condition": "quantIndex == 1",
+        "source": "coefficient method"
+      },
+      {
+        "action": "enter",
+        "target": "quantUnits",
+        "condition": "quantIndex == 2",
+        "source": "units selection"
+      },
+      {
+        "action": "file",
+        "target": "fileList",
+        "source": "runtime browse calibration files"
+      },
+      {
+        "action": "esc",
+        "target": "main",
+        "source": "runtime escape"
+      }
+    ]
+  },
+  {
+    "id": "quantUnits",
+    "canonicalId": "QUANT-UNITS",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "ambiguous",
+    "legacyWnd": "WND-14",
+    "title": "Единицы измерения",
+    "mode": "quantitative",
+    "kind": "menu",
+    "label": "Units",
+    "flowPosition": {
+      "x": 250,
+      "y": 292
+    },
+    "sourceScreenIds": [
+      "1-6-1"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "units selection screens reused as 1-6-1",
+        "line": 916
+      }
+    ],
+    "fields": [
+      "units",
+      "unitsIndex",
+      "returnScreen"
+    ],
+    "transitions": [
+      {
+        "action": "enter/esc",
+        "target": "quantMain",
+        "condition": "returnScreen == quantMain",
+        "source": "runtime return"
+      },
+      {
+        "action": "enter/esc",
+        "target": "multiWaveMenu",
+        "condition": "returnScreen == multiWaveMenu",
+        "source": "runtime return from multiwave"
+      }
+    ]
+  },
+  {
+    "id": "quantCoef",
+    "canonicalId": "QUANT-COEF",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "ambiguous",
+    "legacyWnd": "WND-15",
+    "title": "Коэффициенты",
+    "mode": "quantitative",
+    "kind": "measurement",
+    "label": "Coeff",
+    "flowPosition": {
+      "x": 250,
+      "y": 416
+    },
+    "sourceScreenIds": [
+      "1-6-1",
+      "1-6-1-1-32",
+      "1-6-1-1-33",
+      "1-6-1-1-34"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "coefficient method",
+        "line": 62
+      }
+    ],
+    "fields": [
+      "wavelength",
+      "lastComputedA",
+      "concentration",
+      "quantK",
+      "quantB",
+      "unitsIndex"
+    ],
+    "transitions": [
+      {
+        "action": "1/2/goto λ",
+        "target": "input",
+        "source": "coefficient or wavelength input"
+      },
+      {
+        "action": "file",
+        "target": "saveDialog",
+        "source": "runtime save coefficient"
+      },
+      {
+        "action": "esc",
+        "target": "quantMain",
+        "source": "runtime return"
+      }
+    ]
+  },
+  {
+    "id": "calibrationSetupStandards",
+    "canonicalId": "QUANT-CAL-STANDARDS",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "reindexed",
+    "legacyWnd": "WND-16",
+    "title": "Новая градуировка: стандарты",
+    "mode": "quantitative",
+    "kind": "input",
+    "label": "Calib Std",
+    "flowPosition": {
+      "x": 250,
+      "y": 540
+    },
+    "sourceScreenIds": [
+      "1-6-1-1",
+      "1-6-1-1-2"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "new calibration setup",
+        "line": 291
+      }
+    ],
+    "fields": [
+      "calibration.standards"
+    ],
+    "transitions": [
+      {
+        "action": "enter",
+        "target": "calibrationSetupParallels",
+        "source": "runtime next setup step"
+      },
+      {
+        "action": "esc",
+        "target": "quantMain",
+        "source": "runtime return"
+      }
+    ]
+  },
+  {
+    "id": "calibrationSetupParallels",
+    "canonicalId": "QUANT-CAL-PARALLELS",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "reindexed",
+    "legacyWnd": "WND-17",
+    "title": "Новая градуировка: параллели",
+    "mode": "quantitative",
+    "kind": "input",
+    "label": "Calib Par",
+    "flowPosition": {
+      "x": 430,
+      "y": 540
+    },
+    "sourceScreenIds": [
+      "1-6-1-1-3",
+      "1-6-1-1-4"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "new calibration parallels",
+        "line": 314
+      }
+    ],
+    "fields": [
+      "calibration.parallels"
+    ],
+    "transitions": [
+      {
+        "action": "enter",
+        "target": "calibrationPlan",
+        "source": "runtime build calibration plan"
+      },
+      {
+        "action": "esc",
+        "target": "calibrationSetupStandards",
+        "source": "runtime previous setup step"
+      }
+    ]
+  },
+  {
+    "id": "calibrationPlan",
+    "canonicalId": "QUANT-CAL-PLAN",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "reindexed",
+    "legacyWnd": "WND-18",
+    "title": "План измерений градуировки",
+    "mode": "quantitative",
+    "kind": "menu",
+    "label": "Calib Plan",
+    "flowPosition": {
+      "x": 610,
+      "y": 540
+    },
+    "sourceScreenIds": [
+      "1-6-1-1-5",
+      "1-6-1-1-6"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "calibration plan",
+        "line": 334
+      }
+    ],
+    "fields": [
+      "calibration.plan",
+      "calibration.stepIndex",
+      "calibration done count"
+    ],
+    "transitions": [
+      {
+        "action": "enter",
+        "target": "calibrationStep",
+        "source": "runtime start measuring plan"
+      },
+      {
+        "action": "down",
+        "target": "calibrationJournal",
+        "condition": "measured results exist",
+        "source": "runtime open journal"
+      },
+      {
+        "action": "file",
+        "target": "fileList",
+        "source": "runtime browse calibration files"
+      },
+      {
+        "action": "esc",
+        "target": "quantMain",
+        "source": "runtime return"
+      }
+    ]
+  },
+  {
+    "id": "calibrationStep",
+    "canonicalId": "QUANT-CAL-STEP",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "merged",
+    "legacyWnd": "WND-19",
+    "title": "Шаг градуировки",
+    "mode": "quantitative",
+    "kind": "measurement",
+    "label": "Calib Step",
+    "flowPosition": {
+      "x": 790,
+      "y": 540
+    },
+    "sourceScreenIds": [
+      "1-6-1-1-7",
+      "1-6-1-1-8",
+      "1-6-1-1-9",
+      "1-6-1-1-10",
+      "1-6-1-1-11",
+      "1-6-1-1-12",
+      "1-6-1-1-13",
+      "1-6-1-1-14",
+      "1-6-1-1-15",
+      "1-6-1-1-16",
+      "1-6-1-1-17",
+      "1-6-1-1-18",
+      "1-6-1-1-19",
+      "1-6-1-1-20",
+      "1-6-1-1-21",
+      "1-6-1-1-22",
+      "1-6-1-1-23",
+      "1-6-1-1-24",
+      "1-6-1-1-25",
+      "1-6-1-1-26"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "calibration measurement steps",
+        "line": 362
+      }
+    ],
+    "fields": [
+      "calibration current standard",
+      "calibration current parallel",
+      "measurement actions"
+    ],
+    "transitions": [
+      {
+        "action": "esc",
+        "target": "calibrationPlan",
+        "source": "runtime return to plan"
+      },
+      {
+        "action": "measure",
+        "target": "calibrationJournal",
+        "source": "runtime measured calibration step"
+      },
+      {
+        "action": "file",
+        "target": "saveDialog",
+        "source": "runtime save calibration"
+      }
+    ]
+  },
+  {
+    "id": "calibrationJournal",
+    "canonicalId": "QUANT-CAL-JOURNAL",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "reindexed",
+    "legacyWnd": "WND-20",
+    "title": "Журнал градуировки",
+    "mode": "quantitative",
+    "kind": "measurement",
+    "label": "Calib Journal",
+    "flowPosition": {
+      "x": 790,
+      "y": 664
+    },
+    "sourceScreenIds": [
+      "1-6-1-1-27",
+      "1-6-1-1-28",
+      "1-6-1-1-29",
+      "1-6-1-1-30",
+      "1-6-1-1-31"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "calibration journal",
+        "line": 657
+      }
+    ],
+    "fields": [
+      "calibration results",
+      "calibration.resultCursor"
+    ],
+    "transitions": [
+      {
+        "action": "esc",
+        "target": "calibrationPlan",
+        "source": "runtime return to plan"
+      },
+      {
+        "action": "enter/start/clear",
+        "target": "calibrationStep",
+        "source": "runtime continue or remeasure"
+      },
+      {
+        "action": "down/end",
+        "target": "calibrationGraph",
+        "source": "runtime graph after journal"
+      },
+      {
+        "action": "file",
+        "target": "saveDialog",
+        "source": "runtime save calibration journal"
+      }
+    ]
+  },
+  {
+    "id": "calibrationGraph",
+    "canonicalId": "QUANT-CAL-GRAPH",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "reindexed",
+    "legacyWnd": "WND-21",
+    "title": "График градуировки",
+    "mode": "quantitative",
+    "kind": "graph",
+    "label": "Calib Graph",
+    "flowPosition": {
+      "x": 970,
+      "y": 664
+    },
+    "sourceScreenIds": [
+      "1-6-1-1-32",
+      "1-6-1-1-33",
+      "1-6-1-1-34"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Quantitative analysis_screen map_ECROS-5400UV_RU.txt",
+        "scenario": "calibration graph",
+        "line": 720
+      }
+    ],
+    "fields": [
+      "calibration graph values"
+    ],
+    "transitions": [
+      {
+        "action": "esc",
+        "target": "calibrationJournal",
+        "source": "runtime return to journal"
+      },
+      {
+        "action": "file",
+        "target": "saveDialog",
+        "source": "runtime save calibration graph"
+      }
+    ]
+  },
+  {
+    "id": "kineticsMenu",
+    "canonicalId": "KIN-MENU",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "merged",
+    "legacyWnd": "WND-22",
+    "title": "Кинетика: параметры",
+    "mode": "kinetics",
+    "kind": "menu",
+    "label": "Kinetics",
+    "flowPosition": {
+      "x": 460,
+      "y": 168
+    },
+    "sourceScreenIds": [
+      "1-4-1",
+      "1-4-1-1"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Kinetic_screen_map_ECROS-5400UV_RU.txt",
+        "scenario": "kinetics parameters",
+        "line": 70
+      }
+    ],
+    "fields": [
+      "kinetics menu",
+      "kineticsIndex",
+      "kineticDuration",
+      "kineticUpper",
+      "kineticLower"
+    ],
+    "transitions": [
+      {
+        "action": "enter upper/lower/duration",
+        "target": "input",
+        "source": "kinetics parameter input"
+      },
+      {
+        "action": "start",
+        "target": "kineticsRun",
+        "source": "runtime start kinetics"
+      },
+      {
+        "action": "file",
+        "target": "fileList",
+        "source": "runtime browse kinetics files"
+      },
+      {
+        "action": "esc",
+        "target": "main",
+        "source": "runtime return"
+      }
+    ]
+  },
+  {
+    "id": "kineticsRun",
+    "canonicalId": "KIN-RUN",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "ambiguous",
+    "legacyWnd": "WND-23",
+    "title": "Кинетика: измерение",
+    "mode": "kinetics",
+    "kind": "measurement",
+    "label": "Run",
+    "flowPosition": {
+      "x": 460,
+      "y": 292
+    },
+    "sourceScreenIds": [
+      "1-6-1-1-27"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Kinetic_screen_map_ECROS-5400UV_RU.txt",
+        "scenario": "kinetics run graph and records",
+        "line": 53
+      }
+    ],
+    "fields": [
+      "kineticPoints",
+      "lastComputedA",
+      "lastComputedT",
+      "kinetic time"
+    ],
+    "transitions": [
+      {
+        "action": "down",
+        "target": "kineticsGraph",
+        "source": "runtime open graph"
+      },
+      {
+        "action": "stop/esc",
+        "target": "kineticsMenu",
+        "source": "runtime stop kinetics"
+      },
+      {
+        "action": "file",
+        "target": "saveDialog",
+        "source": "runtime save kinetics"
+      }
+    ]
+  },
+  {
+    "id": "kineticsGraph",
+    "canonicalId": "KIN-GRAPH",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "ambiguous",
+    "legacyWnd": "WND-24",
+    "title": "График кинетики",
+    "mode": "kinetics",
+    "kind": "graph",
+    "label": "Kinetics Graph",
+    "flowPosition": {
+      "x": 460,
+      "y": 416
+    },
+    "sourceScreenIds": [
+      "1-6-1-1-27"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Kinetic_screen_map_ECROS-5400UV_RU.txt",
+        "scenario": "kinetics graph reused source id",
+        "line": 248
+      }
+    ],
+    "fields": [
+      "kinetic graph",
+      "kineticUpper",
+      "kineticLower"
+    ],
+    "transitions": [
+      {
+        "action": "esc",
+        "target": "kineticsRun",
+        "source": "runtime return to run"
+      },
+      {
+        "action": "file",
+        "target": "saveDialog",
+        "source": "runtime save kinetics graph"
+      }
+    ]
+  },
+  {
+    "id": "multiWaveMenu",
+    "canonicalId": "MW-MENU",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "runtime-only",
+    "legacyWnd": "WND-25",
+    "title": "Многоволновой анализ",
+    "mode": "multiWave",
+    "kind": "menu",
+    "label": "MultiWave",
+    "flowPosition": {
+      "x": 670,
+      "y": 168
+    },
+    "sourceScreenIds": [
+      "multi-wave-menu"
+    ],
+    "sources": [
+      {
+        "file": "runtime",
+        "scenario": "multiwave mode implemented in simulator",
+        "line": 0
+      }
+    ],
+    "fields": [
+      "multiWaveCount",
+      "multiWaveParallelCount",
+      "photometryValueIndex",
+      "unitsIndex",
+      "multiWaveIndex"
+    ],
+    "transitions": [
+      {
+        "action": "count/parallel/goto λ",
+        "target": "input",
+        "source": "runtime multiwave input"
+      },
+      {
+        "action": "enter count",
+        "target": "multiWaveSetup",
+        "source": "runtime configure wavelengths"
+      },
+      {
+        "action": "signal",
+        "target": "photometryValue",
+        "source": "runtime choose signal"
+      },
+      {
+        "action": "units",
+        "target": "quantUnits",
+        "source": "runtime choose units"
+      },
+      {
+        "action": "start",
+        "target": "multiWaveRun",
+        "source": "runtime start multiwave"
+      },
+      {
+        "action": "file",
+        "target": "fileList",
+        "source": "runtime browse multiwave files"
+      },
+      {
+        "action": "esc",
+        "target": "main",
+        "source": "runtime return"
+      }
+    ]
+  },
+  {
+    "id": "multiWaveSetup",
+    "canonicalId": "MW-SETUP",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "runtime-only",
+    "legacyWnd": "WND-26",
+    "title": "Настройка длин волн",
+    "mode": "multiWave",
+    "kind": "input",
+    "label": "Setup λ",
+    "flowPosition": {
+      "x": 670,
+      "y": 292
+    },
+    "sourceScreenIds": [
+      "multi-wave-setup"
+    ],
+    "sources": [
+      {
+        "file": "runtime",
+        "scenario": "multiwave wavelength setup",
+        "line": 0
+      }
+    ],
+    "fields": [
+      "multiWaveWavelengths",
+      "multiWaveSetupIndex"
+    ],
+    "transitions": [
+      {
+        "action": "edit λN",
+        "target": "input",
+        "source": "runtime edit wavelength"
+      },
+      {
+        "action": "esc",
+        "target": "multiWaveMenu",
+        "source": "runtime return"
+      }
+    ]
+  },
+  {
+    "id": "multiWaveRun",
+    "canonicalId": "MW-RUN",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "runtime-only",
+    "legacyWnd": "WND-27",
+    "title": "Многоволновое измерение",
+    "mode": "multiWave",
+    "kind": "measurement",
+    "label": "Run λ",
+    "flowPosition": {
+      "x": 670,
+      "y": 416
+    },
+    "sourceScreenIds": [
+      "multi-wave-run"
+    ],
+    "sources": [
+      {
+        "file": "runtime",
+        "scenario": "multiwave measurement",
+        "line": 0
+      }
+    ],
+    "fields": [
+      "multiWaveGraphData",
+      "multiWaveMeasurements",
+      "selectedSignal"
+    ],
+    "transitions": [
+      {
+        "action": "measure",
+        "target": "multiWaveJournal",
+        "source": "runtime measured run"
+      },
+      {
+        "action": "file save",
+        "target": "saveDialog",
+        "condition": "measurements exist",
+        "source": "runtime save multiwave"
+      },
+      {
+        "action": "file browse",
+        "target": "fileList",
+        "condition": "no measurements",
+        "source": "runtime browse multiwave"
+      },
+      {
+        "action": "esc",
+        "target": "multiWaveMenu",
+        "source": "runtime return"
+      }
+    ]
+  },
+  {
+    "id": "multiWaveJournal",
+    "canonicalId": "MW-JOURNAL",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "runtime-only",
+    "legacyWnd": "WND-28",
+    "title": "Журнал многоволнового анализа",
+    "mode": "multiWave",
+    "kind": "measurement",
+    "label": "MW Journal",
+    "flowPosition": {
+      "x": 670,
+      "y": 540
+    },
+    "sourceScreenIds": [
+      "multi-wave-journal"
+    ],
+    "sources": [
+      {
+        "file": "runtime",
+        "scenario": "multiwave journal",
+        "line": 0
+      }
+    ],
+    "fields": [
+      "multiWaveMeasurements",
+      "multiWaveMeasurementCursor"
+    ],
+    "transitions": [
+      {
+        "action": "enter/esc",
+        "target": "multiWaveRun",
+        "source": "runtime return to run"
+      },
+      {
+        "action": "down",
+        "target": "multiWaveGraph",
+        "source": "runtime open graph"
+      },
+      {
+        "action": "file",
+        "target": "saveDialog",
+        "source": "runtime save journal"
+      }
+    ]
+  },
+  {
+    "id": "multiWaveGraph",
+    "canonicalId": "MW-GRAPH",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "runtime-only",
+    "legacyWnd": "WND-29",
+    "title": "График многоволнового анализа",
+    "mode": "multiWave",
+    "kind": "graph",
+    "label": "MW Graph",
+    "flowPosition": {
+      "x": 670,
+      "y": 664
+    },
+    "sourceScreenIds": [
+      "multi-wave-graph"
+    ],
+    "sources": [
+      {
+        "file": "runtime",
+        "scenario": "multiwave graph",
+        "line": 0
+      }
+    ],
+    "fields": [
+      "multiWaveGraphData",
+      "selectedSignal"
+    ],
+    "transitions": [
+      {
+        "action": "esc",
+        "target": "multiWaveJournal",
+        "source": "runtime return to journal"
+      },
+      {
+        "action": "file",
+        "target": "saveDialog",
+        "source": "runtime save graph"
+      }
+    ]
+  },
+  {
+    "id": "settings",
+    "canonicalId": "SET-MAIN",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "ambiguous",
+    "legacyWnd": "WND-30",
+    "title": "Настройки",
+    "mode": "settings",
+    "kind": "menu",
+    "label": "Settings",
+    "flowPosition": {
+      "x": 910,
+      "y": 168
+    },
+    "sourceScreenIds": [
+      "1-4",
+      "1-5"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Settings_ECROS-5400UV-Screen_map_RU.txt",
+        "scenario": "settings menu reuses Screen 1-4 and related settings screen",
+        "line": 51
+      }
+    ],
+    "fields": [
+      "settingsMenu",
+      "settingsIndex",
+      "d2Lamp",
+      "wLamp",
+      "slip",
+      "sampler"
+    ],
+    "transitions": [
+      {
+        "action": "enter",
+        "target": "version",
+        "condition": "settingsIndex == 4",
+        "source": "runtime version screen"
+      },
+      {
+        "action": "dark/wl",
+        "target": "warning",
+        "condition": "dark current or wavelength calibration result",
+        "source": "runtime operation warning"
+      },
+      {
+        "action": "esc",
+        "target": "main",
+        "source": "runtime return"
+      }
+    ]
+  },
+  {
+    "id": "version",
+    "canonicalId": "SET-VERSION",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "ambiguous",
+    "legacyWnd": "WND-31",
+    "title": "Версия",
+    "mode": "settings",
+    "kind": "system",
+    "label": "Version",
+    "flowPosition": {
+      "x": 1090,
+      "y": 168
+    },
+    "sourceScreenIds": [
+      "1-4",
+      "1-5"
+    ],
+    "sources": [
+      {
+        "file": "docs/screen-map/Settings_ECROS-5400UV-Screen_map_RU.txt",
+        "scenario": "version/settings details",
+        "line": 570
+      }
+    ],
+    "fields": [
+      "softwareVersion",
+      "hardwareVersion",
+      "company"
+    ],
+    "transitions": [
+      {
+        "action": "enter/esc",
+        "target": "settings",
+        "source": "runtime return to settings"
+      }
+    ]
+  },
+  {
+    "id": "warning",
+    "canonicalId": "SHARED-WARNING",
+    "implementationStatus": "implemented",
+    "sourceIntegrity": "runtime-only",
+    "legacyWnd": "WND-32",
+    "title": "Предупреждение",
+    "mode": "shared",
+    "kind": "dialog",
+    "label": "Warning",
+    "flowPosition": {
+      "x": 1270,
+      "y": 664
+    },
+    "sourceScreenIds": [
+      "warning"
+    ],
+    "sources": [
+      {
+        "file": "runtime",
+        "scenario": "shared warning dialog",
+        "line": 0
+      }
+    ],
+    "fields": [
+      "warning.title",
+      "warning.body",
+      "warningReturn"
+    ],
+    "transitions": [
+      {
+        "action": "enter/esc",
+        "target": "main",
+        "condition": "actual target is warningReturn",
+        "source": "runtime warning return"
+      }
+    ]
+  }
+]
